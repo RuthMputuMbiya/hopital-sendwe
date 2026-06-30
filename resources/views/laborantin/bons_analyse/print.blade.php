@@ -122,13 +122,70 @@
         
         .info-label {
             font-weight: 600;
-            width: 120px;
+            width: 130px;
             flex-shrink: 0;
             color: #555;
         }
         
         .info-value {
             flex: 1;
+        }
+        
+        /* Bilan Infirmier */
+        .bilan-infirmier {
+            border: 2px solid #17a2b8;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #f0f9ff;
+            border-radius: 6px;
+        }
+        
+        .bilan-infirmier .block-title {
+            font-weight: 700;
+            font-size: 12px;
+            color: #0c5460;
+            border-bottom: 2px solid #17a2b8;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .bilan-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        
+        .bilan-item {
+            background: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+        
+        .bilan-item .label {
+            font-size: 9px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .bilan-item .value {
+            font-weight: 700;
+            font-size: 12px;
+            color: #1a4d8c;
+        }
+        
+        .bilan-detail {
+            margin-top: 10px;
+            border-top: 1px dashed #17a2b8;
+            padding-top: 10px;
+        }
+        
+        .text-danger {
+            color: #dc3545 !important;
         }
         
         /* Type échantillon */
@@ -348,48 +405,28 @@
         }
         
         @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                padding: 0;
-                margin: 0;
-            }
-            .bon-container {
-                border: 1px solid #999;
-                padding: 15px;
-            }
-            .badge-urgent {
-                animation: none;
-            }
+            .no-print { display: none !important; }
+            body { padding: 0; margin: 0; }
+            .bon-container { border: 1px solid #999; padding: 15px; }
+            .badge-urgent { animation: none; }
         }
         
         @media (max-width: 768px) {
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            .examens-grid {
-                grid-template-columns: 1fr;
-            }
-            .bon-container {
-                padding: 15px;
-            }
+            .info-grid { grid-template-columns: 1fr; }
+            .examens-grid { grid-template-columns: 1fr; }
+            .bilan-grid { grid-template-columns: 1fr 1fr; }
+            .bon-container { padding: 15px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Boutons (non imprimables) -->
     <div class="no-print">
-        <button onclick="window.print()" class="btn-print">
-            🖨️ Imprimer le bon
-        </button>
-        <button onclick="window.close()" class="btn-close">
-            ✖ Fermer
-        </button>
+        <button onclick="window.print()" class="btn-print">🖨️ Imprimer</button>
+        <button onclick="window.close()" class="btn-close">✖ Fermer</button>
+        <button onclick="window.location.reload()" class="btn-print" style="background: #28a745;">🔄 Recharger</button>
     </div>
 
-    <!-- Contenu du Bon -->
     <div class="bon-container" id="bon-content">
         
         <!-- EN-TÊTE -->
@@ -405,9 +442,8 @@
             </div>
         </div>
 
-        <!-- GRILLE INFORMATIONS -->
+        <!-- INFORMATIONS PATIENT ET MÉDECIN -->
         <div class="info-grid">
-            <!-- Patient -->
             <div class="info-block">
                 <div class="block-title">👤 Informations patient</div>
                 <div class="info-row">
@@ -441,9 +477,8 @@
                 </div>
             </div>
 
-            <!-- Médecin demandeur -->
             <div class="info-block">
-                <div class="block-title">👨‍⚕️ Médecin/Clinicién demandeur</div>
+                <div class="block-title">👨‍⚕️ Médecin demandeur</div>
                 <div class="info-row">
                     <span class="info-label">Nom et prénom :</span>
                     <span class="info-value"><strong>Dr. {{ $bon->prenom_medecin_demandeur }} {{ $bon->nom_medecin_demandeur }}</strong></span>
@@ -471,9 +506,107 @@
             </div>
         </div>
 
+        <!-- BILAN INFIRMIER -->
+        @if($bon->poids_infirmier || $bon->taille_infirmier || $bon->temperature_infirmier || $bon->tension_arterielle_infirmier)
+        <div class="bilan-infirmier">
+            <div class="block-title">
+                🩺 Bilan initial - Infirmier
+                @if($bon->infirmier)
+                <span style="font-weight: normal; font-size: 11px; color: #0c5460; float: right;">
+                    {{ $bon->infirmier->nom_complet ?? 'N/A' }}
+                </span>
+                @endif
+            </div>
+            <div class="bilan-grid">
+                @if($bon->poids_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Poids</div>
+                    <div class="value">{{ $bon->poids_infirmier }} kg</div>
+                </div>
+                @endif
+                @if($bon->taille_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Taille</div>
+                    <div class="value">{{ $bon->taille_infirmier }} cm</div>
+                </div>
+                @endif
+                @if($bon->temperature_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Température</div>
+                    <div class="value">{{ $bon->temperature_infirmier }} °C</div>
+                </div>
+                @endif
+                @if($bon->tension_arterielle_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Tension</div>
+                    <div class="value">{{ $bon->tension_arterielle_infirmier }}</div>
+                </div>
+                @endif
+                @if($bon->frequence_cardiaque_infirmier)
+                <div class="bilan-item">
+                    <div class="label">FC</div>
+                    <div class="value">{{ $bon->frequence_cardiaque_infirmier }} bpm</div>
+                </div>
+                @endif
+                @if($bon->frequence_respiratoire_infirmier)
+                <div class="bilan-item">
+                    <div class="label">FR</div>
+                    <div class="value">{{ $bon->frequence_respiratoire_infirmier }}/min</div>
+                </div>
+                @endif
+                @if($bon->spo2_infirmier)
+                <div class="bilan-item">
+                    <div class="label">SpO2</div>
+                    <div class="value">{{ $bon->spo2_infirmier }}%</div>
+                </div>
+                @endif
+            </div>
+            
+            @if($bon->motif_infirmier || $bon->symptomes_infirmier || $bon->observations_infirmier)
+            <div class="bilan-detail">
+                @if($bon->motif_infirmier)
+                <div class="info-row">
+                    <span class="info-label">Motif :</span>
+                    <span class="info-value">{{ $bon->motif_infirmier }}</span>
+                </div>
+                @endif
+                @if($bon->symptomes_infirmier)
+                <div class="info-row">
+                    <span class="info-label">Symptômes :</span>
+                    <span class="info-value">{{ $bon->symptomes_infirmier }}</span>
+                </div>
+                @endif
+                @if($bon->observations_infirmier)
+                <div class="info-row">
+                    <span class="info-label">Observations :</span>
+                    <span class="info-value">{{ $bon->observations_infirmier }}</span>
+                </div>
+                @endif
+            </div>
+            @endif
+            
+            @if($bon->allergies_infirmier || $bon->traitements_infirmier)
+            <div class="bilan-detail">
+                @if($bon->allergies_infirmier)
+                <div class="info-row">
+                    <span class="info-label" style="color: #dc3545;">⚠️ Allergies :</span>
+                    <span class="info-value" style="color: #dc3545;"><strong>{{ $bon->allergies_infirmier }}</strong></span>
+                </div>
+                @endif
+                @if($bon->traitements_infirmier)
+                <div class="info-row">
+                    <span class="info-label">Traitements :</span>
+                    <span class="info-value">{{ $bon->traitements_infirmier }}</span>
+                </div>
+                @endif
+            </div>
+            @endif
+        </div>
+        @endif
+
         <!-- PRÉLEVEUR -->
         <div class="info-block" style="margin-bottom: 20px;">
-            <div class="block-title">💉 Préleveur (labo/autre)</div>
+            <div class="block-title">💉 Préleveur</div>
             <div class="info-row">
                 <span class="info-label">Nom et prénom :</span>
                 <span class="info-value">{{ $bon->nom_preleveur ?? '___________________' }} {{ $bon->prenom_preleveur ?? '___________________' }}</span>
@@ -587,9 +720,7 @@
                     @endif
                 @endforeach
             @else
-                <div style="color: #999; text-align: center; padding: 10px;">
-                    Aucun résultat enregistré
-                </div>
+                <div style="color: #999; text-align: center; padding: 10px;">Aucun résultat enregistré</div>
             @endif
         </div>
         @endif
@@ -598,9 +729,7 @@
         @if($bon->observations_laborantin)
         <div class="observations-section">
             <div class="block-title">📝 Observations du laborantin</div>
-            <div class="observations-content">
-                {{ $bon->observations_laborantin }}
-            </div>
+            <div class="observations-content">{{ $bon->observations_laborantin }}</div>
         </div>
         @endif
 
@@ -608,9 +737,7 @@
         @if($bon->observations_cliniques)
         <div class="observations-section">
             <div class="block-title">📝 Informations cliniques</div>
-            <div class="observations-content">
-                {{ $bon->observations_cliniques }}
-            </div>
+            <div class="observations-content">{{ $bon->observations_cliniques }}</div>
         </div>
         @endif
 
@@ -631,9 +758,7 @@
             <div class="contact">Hôpital Sendwe - Lubumbashi</div>
             <div>📞 +243 898 479 577 / +243 976 021 909</div>
             <div>📧 laboratoiresendwe@gmail.com</div>
-            <div style="margin-top: 8px; font-size: 9px;">
-                Document généré automatiquement le {{ now()->format('d/m/Y H:i') }}
-            </div>
+            <div style="margin-top: 8px; font-size: 9px;">Document généré le {{ now()->format('d/m/Y H:i') }}</div>
         </div>
     </div>
 

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Laborantin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Examen;
-use App\Models\Patient;
+use App\Models\BonAnalyse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,33 +13,19 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Vérifier que l'utilisateur est bien connecté
-        if (!Auth::check()) {
-            return redirect()->route('login');
-        }
-        
         // Vérifier que l'utilisateur est bien un laborantin (role_id = 4)
         if (Auth::user()->role_id != 4) {
-            if (Auth::user()->role_id == 1) {
-                return redirect()->route('gestionnaire.dashboard');
-            } elseif (Auth::user()->role_id == 2) {
-                return redirect()->route('medecin.dashboard');
-            } elseif (Auth::user()->role_id == 3) {
-                return redirect()->route('receptionniste.dashboard');
-            }
             return redirect()->route('dashboard');
         }
 
-        $userId = Auth::id();
-
-        // Statistiques de base
+        // Statistiques de base (pour la vue)
         $stats = [
-            'examens_total' => Examen::where('laborantin_id', $userId)->count(),
-            'examens_attente' => Examen::where('laborantin_id', $userId)->where('statut', 'en_attente')->count(),
-            'examens_cours' => Examen::where('laborantin_id', $userId)->where('statut', 'en_cours')->count(),
-            'examens_termines' => Examen::where('laborantin_id', $userId)->where('statut', 'termine')->count(),
-            'taux_realisation' => Examen::where('laborantin_id', $userId)->count() > 0 
-                ? round((Examen::where('laborantin_id', $userId)->where('statut', 'termine')->count() / Examen::where('laborantin_id', $userId)->count()) * 100, 2) 
+            'examens_total' => BonAnalyse::count(),
+            'examens_attente' => BonAnalyse::where('statut', 'en_attente')->count(),
+            'examens_cours' => BonAnalyse::whereIn('statut', ['preleve', 'analyse'])->count(),
+            'examens_termines' => BonAnalyse::whereIn('statut', ['termine', 'retourne'])->count(),
+            'taux_realisation' => BonAnalyse::count() > 0 
+                ? round((BonAnalyse::whereIn('statut', ['termine', 'retourne'])->count() / BonAnalyse::count()) * 100, 2) 
                 : 0,
         ];
 
@@ -50,62 +35,77 @@ class DashboardController extends Controller
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $chartLabels[] = ucfirst($date->locale('fr')->isoFormat('MMM YYYY'));
-            $chartData[] = Examen::where('laborantin_id', $userId)
-                ->whereYear('created_at', $date->year)
+            $chartData[] = BonAnalyse::whereYear('created_at', $date->year)
                 ->whereMonth('created_at', $date->month)
                 ->count();
         }
 
-        // Top 5 types d'examens
-        $topExamensTypes = Examen::where('laborantin_id', $userId)
-            ->select('type_examen', DB::raw('count(*) as total'))
-            ->groupBy('type_examen')
+        // Top 5 types d'examens (adapté pour la vue)
+        $topExamensTypes = BonAnalyse::select('type_echantillon as type_examen', DB::raw('count(*) as total'))
+            ->whereNotNull('type_echantillon')
+            ->groupBy('type_echantillon')
             ->orderBy('total', 'desc')
             ->limit(5)
             ->get();
 
         // Examens en attente
-        $examensEnAttente = Examen::with(['patient'])
-            ->where('laborantin_id', $userId)
+        $examensEnAttente = BonAnalyse::with(['patient', 'medecin'])
             ->where('statut', 'en_attente')
-            ->orderBy('date_examen', 'asc')
+            ->orderBy('created_at', 'asc')
             ->limit(10)
-            ->get();
+            ->get()
+            ->map(function($bon) {
+                return (object) [
+                    'id_examen' => $bon->id_bon,
+                    'id' => $bon->id_bon,
+                    'patient' => $bon->patient,
+                    'type_examen' => $bon->type_echantillon ?? 'Non spécifié',
+                    'date_examen' => $bon->created_at,
+                ];
+            });
 
         // Derniers examens réalisés
-        $recentExamens = Examen::with(['patient'])
-            ->where('laborantin_id', $userId)
-            ->orderBy('created_at', 'desc')
+        $recentExamens = BonAnalyse::with(['patient', 'medecin'])
+            ->whereIn('statut', ['termine', 'retourne'])
+            ->orderBy('updated_at', 'desc')
             ->limit(10)
-            ->get();
+            ->get()
+            ->map(function($bon) {
+                return (object) [
+                    'id_examen' => $bon->id_bon,
+                    'id' => $bon->id_bon,
+                    'patient' => $bon->patient,
+                    'type_examen' => $bon->type_echantillon ?? 'Non spécifié',
+                    'date_examen' => $bon->updated_at,
+                    'resultat' => $bon->resultats ? true : false,
+                ];
+            });
 
-        // Performance hebdomadaire
+        // Performance hebdomadaire (pour la vue)
         $performanceHebdomadaire = [];
         $jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-        $jourMapping = ['Lundi' => 1, 'Mardi' => 2, 'Mercredi' => 3, 'Jeudi' => 4, 'Vendredi' => 5, 'Samedi' => 6, 'Dimanche' => 7];
         
         foreach ($jours as $index => $jour) {
-            $jourNumero = $jourMapping[$jour];
-            $realises = Examen::where('laborantin_id', $userId)
-                ->whereRaw('DAYOFWEEK(date_examen) = ?', [$jourNumero + 1])
+            $date = Carbon::now()->startOfWeek()->addDays($index);
+            $realises = BonAnalyse::whereIn('statut', ['termine', 'retourne'])
+                ->whereDate('updated_at', $date)
                 ->count();
-            $performanceHebdomadaire[$index] = [
+            
+            $performanceHebdomadaire[] = [
                 'realises' => $realises,
-                'prevus' => max($realises, 5)
+                'prevus' => max($realises, 3)
             ];
         }
 
-        // Évolution mensuelle avec variation
+        // Évolution mensuelle (pour la vue)
         $evolutionMensuelle = [];
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
-            $total = Examen::where('laborantin_id', $userId)
-                ->whereYear('created_at', $date->year)
+            $total = BonAnalyse::whereYear('created_at', $date->year)
                 ->whereMonth('created_at', $date->month)
                 ->count();
             
-            $moisPrecedent = Examen::where('laborantin_id', $userId)
-                ->whereYear('created_at', $date->copy()->subMonth()->year)
+            $moisPrecedent = BonAnalyse::whereYear('created_at', $date->copy()->subMonth()->year)
                 ->whereMonth('created_at', $date->copy()->subMonth()->month)
                 ->count();
             

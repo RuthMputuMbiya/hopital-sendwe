@@ -56,6 +56,9 @@ class LoginController extends Controller
         ])->onlyInput('login');
     }
 
+    /**
+     * Redirection après connexion selon le rôle
+     */
     protected function redirectTo()
     {
         $user = Auth::user();
@@ -69,6 +72,8 @@ class LoginController extends Controller
             return route('receptionniste.dashboard');
         } elseif ($user->role_id == 4) {
             return route('laborantin.dashboard');
+        } elseif ($user->role_id == 5) {
+            return route('infirmier.dashboard');
         }
         
         return route('dashboard');

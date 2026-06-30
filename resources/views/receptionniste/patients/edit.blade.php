@@ -65,10 +65,11 @@
                                     @error('date_naissance') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-semibold text-dark">Âge</label>
+                                    <label class="form-label fw-semibold text-dark">Âge calculé</label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-calendar-alt text-warning"></i></span>
-                                        <input type="text" class="form-control border-start-0 bg-light" value="{{ $patient->age }} ans" disabled>
+                                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-calculator text-warning"></i></span>
+                                        <input type="text" class="form-control border-start-0 bg-light" 
+                                               value="{{ $patient->age ? $patient->age . ' ans' : 'Date non définie' }}" disabled>
                                     </div>
                                 </div>
                                 <div class="col-md-4">

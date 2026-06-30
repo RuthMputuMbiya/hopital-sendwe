@@ -43,14 +43,23 @@ class RolesTableSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now()
             ],
+            // ✅ AJOUT DE L'INFIRMIER
+            [
+                'id_role' => 5,
+                'nom_role' => 'Infirmier',
+                'description' => 'Bilan initial, constantes vitales, soins infirmiers',
+                'created_at' => now(),
+                'updated_at' => now()
+            ],
         ];
         
         DB::table('roles')->insert($roles);
         
-        echo "\n✅ 4 rôles créés avec succès !\n";
+        echo "\n✅ 5 rôles créés avec succès !\n";
         echo "   - Gestionnaire système (ID: 1)\n";
         echo "   - Médecin (ID: 2)\n";
         echo "   - Réceptionniste (ID: 3)\n";
         echo "   - Laborantin (ID: 4)\n";
+        echo "   - Infirmier (ID: 5) 🩺\n";
     }
 }

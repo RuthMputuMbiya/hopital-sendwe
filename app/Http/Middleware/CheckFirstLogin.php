@@ -12,14 +12,28 @@ class CheckFirstLogin
      */
     public function handle(Request $request, Closure $next)
     {
-        // POUR TOUS LES UTILISATEURS (médecins, réceptionnistes, laborantins, gestionnaires)
+        // Vérifier si l'utilisateur est connecté
         if (auth()->check()) {
             $user = auth()->user();
             
             // Vérifier si la méthode needsPasswordChange existe
             if (method_exists($user, 'needsPasswordChange') && $user->needsPasswordChange()) {
-                // Si déjà sur la page de changement, on laisse passer
-                if ($request->route()->getName() == 'password.change') {
+                
+                // ✅ EXCLURE CES ROUTES POUR ÉVITER LA BOUCLE
+                $excludedRoutes = [
+                    'password.change',
+                    'password.update',
+                    'login',
+                    'logout',
+                    'register',
+                    'password.request',
+                    'password.email',
+                    'password.reset',
+                    'welcome'
+                ];
+                
+                // Si déjà sur une route exclue, on laisse passer
+                if ($request->route() && in_array($request->route()->getName(), $excludedRoutes)) {
                     return $next($request);
                 }
                 

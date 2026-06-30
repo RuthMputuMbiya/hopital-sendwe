@@ -47,6 +47,7 @@ class UserController extends Controller
             'medecins' => User::where('role_id', 2)->count(),
             'receptionnistes' => User::where('role_id', 3)->count(),
             'laborantins' => User::where('role_id', 4)->count(),
+            'infirmiers' => User::where('role_id', 5)->count(), // ✅ AJOUT INFIRMIER
         ];
         
         return view('gestionnaire.users.index', compact('users', 'roles', 'stats', 'search', 'roleFilter'));
@@ -95,7 +96,7 @@ class UserController extends Controller
                 'role_id' => $validated['role_id'],
                 'est_actif' => $validated['est_actif'] ?? true,
                 'date_embauche' => now(),
-                'specialite' => $validated['role_id'] == 2 ? $validated['specialite'] : null,
+                'specialite' => ($validated['role_id'] == 2) ? $validated['specialite'] : null,
                 'first_login' => true,
                 'password_changed_at' => null
             ]);
@@ -127,14 +128,17 @@ class UserController extends Controller
         $user = User::with('role')->findOrFail($id);
         
         $stats = [];
-        if ($user->role_id == 2) {
+        if ($user->role_id == 2) { // Médecin
             $stats['consultations'] = $user->consultationsEffectuees()->count();
             $stats['patients_vus'] = $user->consultationsEffectuees()->distinct('patient_id')->count('patient_id');
-        } elseif ($user->role_id == 4) {
+        } elseif ($user->role_id == 4) { // Laborantin
             $stats['examens'] = $user->examensEffectues()->count();
             $stats['examens_termines'] = $user->examensEffectues()->where('statut', 'termine')->count();
-        } elseif ($user->role_id == 3) {
+        } elseif ($user->role_id == 3) { // Réceptionniste
             $stats['patients_enregistres'] = \App\Models\Patient::count();
+        } elseif ($user->role_id == 5) { // ✅ INFIRMIER
+            $stats['bilans_realises'] = \App\Models\Bilan::where('infirmier_id', $user->id_user)->count();
+            $stats['patients_pris_en_charge'] = \App\Models\Consultation::where('infirmier_id', $user->id_user)->distinct('id_patient')->count('id_patient');
         }
         
         $notifications = Notification::where('user_id', $user->id_user)
@@ -186,7 +190,7 @@ class UserController extends Controller
             'adresse' => $validated['adresse'],
             'role_id' => $validated['role_id'],
             'est_actif' => $validated['est_actif'],
-            'specialite' => $validated['role_id'] == 2 ? $validated['specialite'] : null,
+            'specialite' => ($validated['role_id'] == 2) ? $validated['specialite'] : null,
         ]);
 
         return redirect()->route('gestionnaire.users.index')

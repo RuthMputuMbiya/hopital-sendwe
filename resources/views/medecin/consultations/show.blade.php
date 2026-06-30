@@ -10,20 +10,21 @@
                 <i class="fas fa-file-alt me-2" style="color: #1a4d6b;"></i>
                 Détails de la consultation
             </h1>
-            <p class="text-muted mb-0">{{ $consultation->numero_consultacion ?? 'N/A' }}</p>
+            <p class="text-muted mb-0">{{ $consultation->numero_consultation ?? 'N/A' }}</p>
         </div>
         <div data-aos="fade-left">
             <div class="btn-group">
                 <a href="{{ route('medecin.consultations.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i> Retour
                 </a>
-                @if($consultation->statut != 'termine')
+                @if($consultation->statut_consultation != 'termine')
                 <a href="{{ route('medecin.consultations.edit', $consultation->id_consultation) }}" class="btn btn-primary">
                     <i class="fas fa-edit me-2"></i> Modifier
                 </a>
                 @endif
-                <a href="{{ route('medecin.bons-analyse.create', $consultation->id_patient) }}" class="btn btn-info">
-                    <i class="fas fa-flask me-2"></i> Bon d'analyse
+                <a href="{{ route('medecin.bons-analyse.create', ['patientId' => $consultation->id_patient]) }}" 
+                   class="btn btn-info">
+                    <i class="fas fa-flask me-2"></i> Envoyer au laborantin
                 </a>
                 <button onclick="window.print()" class="btn btn-success">
                     <i class="fas fa-print me-2"></i> Imprimer
@@ -33,7 +34,9 @@
     </div>
 
     <div class="row">
+        <!-- Colonne gauche -->
         <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+            
             <!-- Informations patient -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -49,73 +52,8 @@
                 </div>
             </div>
             
-            <!-- Signes vitaux -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-heartbeat me-2"></i> Signes vitaux
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        @if($consultation->tension_arterielle)
-                        <div class="col-6 mb-2">
-                            <div class="border rounded p-2 text-center">
-                                <i class="fas fa-heartbeat text-danger"></i>
-                                <div class="small text-muted">Tension</div>
-                                <strong>{{ $consultation->tension_arterielle }}</strong>
-                            </div>
-                        </div>
-                        @endif
-                        @if($consultation->poids)
-                        <div class="col-6 mb-2">
-                            <div class="border rounded p-2 text-center">
-                                <i class="fas fa-weight-scale text-success"></i>
-                                <div class="small text-muted">Poids</div>
-                                <strong>{{ $consultation->poids }} kg</strong>
-                            </div>
-                        </div>
-                        @endif
-                        @if($consultation->taille)
-                        <div class="col-6 mb-2">
-                            <div class="border rounded p-2 text-center">
-                                <i class="fas fa-ruler text-info"></i>
-                                <div class="small text-muted">Taille</div>
-                                <strong>{{ $consultation->taille }} cm</strong>
-                            </div>
-                        </div>
-                        @endif
-                        @if($consultation->temperature)
-                        <div class="col-6 mb-2">
-                            <div class="border rounded p-2 text-center">
-                                <i class="fas fa-thermometer-half text-warning"></i>
-                                <div class="small text-muted">Température</div>
-                                <strong>{{ $consultation->temperature }} °C</strong>
-                            </div>
-                        </div>
-                        @endif
-                        @if($consultation->frequence_cardiaque)
-                        <div class="col-6 mb-2">
-                            <div class="border rounded p-2 text-center">
-                                <i class="fas fa-heart text-danger"></i>
-                                <div class="small text-muted">FC</div>
-                                <strong>{{ $consultation->frequence_cardiaque }} bpm</strong>
-                            </div>
-                        </div>
-                        @endif
-                        @if($consultation->imc)
-                        <div class="col-6 mb-2">
-                            <div class="border rounded p-2 text-center">
-                                <i class="fas fa-calculator text-primary"></i>
-                                <div class="small text-muted">IMC</div>
-                                <strong>{{ $consultation->imc }}</strong>
-                            </div>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-            
             <!-- Informations consultation -->
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <i class="fas fa-info-circle me-2"></i> Informations
                 </div>
@@ -123,20 +61,98 @@
                     <p class="mb-2"><i class="fas fa-calendar me-2 text-primary"></i> Date: {{ isset($consultation->date_consultation) ? \Carbon\Carbon::parse($consultation->date_consultation)->format('d/m/Y') : 'N/A' }}</p>
                     <p class="mb-2"><i class="fas fa-clock me-2 text-primary"></i> Heure: {{ $consultation->heure_consultation ?? 'N/A' }}</p>
                     <p class="mb-2"><i class="fas fa-user-md me-2 text-primary"></i> Médecin: Dr. {{ $consultation->medecin->nom_complet ?? 'N/A' }}</p>
+                    @if($consultation->infirmier)
+                    <p class="mb-2"><i class="fas fa-user-nurse me-2 text-primary"></i> Infirmier: {{ $consultation->infirmier->nom_complet ?? 'N/A' }}</p>
+                    @endif
                     <p class="mb-0">
                         <i class="fas fa-flag-checkered me-2 text-primary"></i> Statut: 
-                        @if($consultation->statut == 'en_cours')
-                            <span class="badge bg-warning text-dark">En cours</span>
-                        @elseif($consultation->statut == 'termine')
-                            <span class="badge bg-success">Terminé</span>
-                        @else
-                            <span class="badge bg-danger">Annulé</span>
-                        @endif
+                        {!! $consultation->statut_consultation_badge !!}
                     </p>
                 </div>
             </div>
+            
+            <!-- Bilan Infirmier -->
+            @if($consultation->bilan)
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-user-nurse me-2"></i> Bilan infirmier
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">Poids</div>
+                                <strong>{{ $consultation->bilan->poids ?? 'N/A' }} kg</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">Taille</div>
+                                <strong>{{ $consultation->bilan->taille ?? 'N/A' }} cm</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">Température</div>
+                                <strong>{{ $consultation->bilan->temperature ?? 'N/A' }} °C</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">Tension</div>
+                                <strong>{{ $consultation->bilan->tension_arterielle ?? 'N/A' }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">FC</div>
+                                <strong>{{ $consultation->bilan->frequence_cardiaque ?? 'N/A' }} bpm</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">FR</div>
+                                <strong>{{ $consultation->bilan->frequence_respiratoire ?? 'N/A' }}/min</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">IMC</div>
+                                <strong>{{ $consultation->bilan->imc ?? 'N/A' }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="border rounded p-2 text-center">
+                                <div class="small text-muted">SpO2</div>
+                                <strong>{{ $consultation->bilan->spo2 ?? 'N/A' }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    @if($consultation->bilan->motif || $consultation->bilan->symptomes || $consultation->bilan->observations || $consultation->bilan->allergies || $consultation->bilan->traitements_en_cours)
+                    <hr>
+                    @if($consultation->bilan->motif)
+                    <p class="mb-1"><strong>Motif:</strong> {{ $consultation->bilan->motif }}</p>
+                    @endif
+                    @if($consultation->bilan->symptomes)
+                    <p class="mb-1"><strong>Symptômes:</strong> {{ $consultation->bilan->symptomes }}</p>
+                    @endif
+                    @if($consultation->bilan->observations)
+                    <p class="mb-1"><strong>Observations:</strong> {{ $consultation->bilan->observations }}</p>
+                    @endif
+                    @if($consultation->bilan->allergies)
+                    <p class="mb-1 text-danger"><strong>Allergies:</strong> {{ $consultation->bilan->allergies }}</p>
+                    @endif
+                    @if($consultation->bilan->traitements_en_cours)
+                    <p class="mb-1"><strong>Traitements:</strong> {{ $consultation->bilan->traitements_en_cours }}</p>
+                    @endif
+                    @endif
+                </div>
+            </div>
+            @endif
         </div>
         
+        <!-- Colonne droite -->
         <div class="col-md-8" data-aos="fade-up" data-aos-delay="200">
             <!-- Motif et Symptômes -->
             <div class="row mb-4">
@@ -202,87 +218,68 @@
             </div>
             @endif
             
-            <!-- Examens prescrits -->
+            <!-- Bons d'analyse avec statuts -->
+            @if($consultation->bonsAnalyse && $consultation->bonsAnalyse->count() > 0)
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fas fa-microscope me-2"></i> Examens prescrits
-                </div>
-                <div class="card-body">
-                    @if(isset($examens) && $examens->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Date</th>
-                                    <th>Statut</th>
-                                    <th>Résultat</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($examens as $examen)
-                                <tr>
-                                    <td>{{ $examen->type_examen ?? 'N/A' }}</td>
-                                    <td>{{ isset($examen->date_examen) ? \Carbon\Carbon::parse($examen->date_examen)->format('d/m/Y') : 'N/A' }}</td>
-                                    <td>
-                                        @if($examen->statut == 'termine')
-                                            <span class="badge bg-success">Terminé</span>
-                                        @elseif($examen->statut == 'en_attente')
-                                            <span class="badge bg-warning text-dark">En attente</span>
-                                        @else
-                                            <span class="badge bg-danger">Annulé</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ Str::limit($examen->resultat ?? '-', 50) }}</td>
-                                    <td>
-                                        <a href="{{ route('medecin.examens.show', $examen->id_examen) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @else
-                    <p class="text-muted text-center">Aucun examen prescrit</p>
-                    @endif
-                    
-                    <!-- Bouton pour prescrire des examens -->
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#prescrireExamensModal">
-                        <i class="fas fa-plus-circle me-1"></i> Prescrire des examens
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Consultations précédentes -->
-            @if(isset($consultationsPrecedentes) && $consultationsPrecedentes->count() > 0)
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-history me-2"></i> Consultations précédentes
+                    <i class="fas fa-flask me-2"></i> Bons d'analyse
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-sm mb-0">
                             <thead>
                                 <tr>
+                                    <th>N° Bon</th>
                                     <th>Date</th>
-                                    <th>Diagnostic</th>
-                                    <th>Médecin</th>
+                                    <th>Statut</th>
+                                    <th>Priorité</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($consultationsPrecedentes as $prev)
+                                @foreach($consultation->bonsAnalyse as $bon)
                                 <tr>
-                                    <td>{{ isset($prev->date_consultation) ? \Carbon\Carbon::parse($prev->date_consultation)->format('d/m/Y') : 'N/A' }}</td>
-                                    <td>{{ Str::limit($prev->diagnostic ?? 'N/A', 50) }}</td>
-                                    <td>Dr. {{ $prev->medecin->nom_complet ?? 'N/A' }}</td>
+                                    <td><code>{{ $bon->numero_bon }}</code></td>
+                                    <td>{{ $bon->date_demande->format('d/m/Y') }}</td>
                                     <td>
-                                        <a href="{{ route('medecin.consultations.show', $prev->id_consultation) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
+                                        @if($bon->statut == 'termine')
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle me-1"></i> Terminé
+                                            </span>
+                                        @elseif($bon->statut == 'retourne')
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-undo me-1"></i> Retourné
+                                            </span>
+                                        @elseif($bon->statut == 'preleve')
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-syringe me-1"></i> Prélevé
+                                            </span>
+                                        @elseif($bon->statut == 'analyse')
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-microscope me-1"></i> En analyse
+                                            </span>
+                                        @else
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock me-1"></i> En attente
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ $bon->priorite == 'urgent' ? 'danger' : 'primary' }}">
+                                            {{ $bon->priorite == 'urgent' ? 'Urgent' : 'Normal' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ route('medecin.bons-analyse.show', $bon->id_bon) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('medecin.bons-analyse.print', $bon->id_bon) }}" 
+                                               class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                <i class="fas fa-print"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -292,106 +289,70 @@
                 </div>
             </div>
             @endif
+            
+            <!-- Résultats si bon terminé -->
+            @if($consultation->bonsAnalyse && $consultation->bonsAnalyse->where('statut', 'termine')->count() > 0)
+            @foreach($consultation->bonsAnalyse->where('statut', 'termine') as $bon)
+            @if($bon->resultats && count($bon->resultats) > 0)
+            <div class="card mb-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-file-medical me-2"></i> Résultats d'analyse - Bon N° {{ $bon->numero_bon }}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Examen</th>
+                                    <th>Résultat</th>
+                                    <th>Commentaire</th>
+                                    <th>Date saisie</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($bon->resultats as $key => $resultat)
+                                <tr>
+                                    <td><strong>{{ ucfirst(str_replace('_', ' ', $key)) }}</strong></td>
+                                    <td>
+                                        <span class="fw-bold text-primary">{{ $resultat['valeur'] ?? 'Non renseigné' }}</span>
+                                    </td>
+                                    <td>{{ $resultat['commentaire'] ?? '-' }}</td>
+                                    <td>{{ isset($resultat['date_saisie']) ? \Carbon\Carbon::parse($resultat['date_saisie'])->format('d/m/Y H:i') : '-' }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($bon->observations_laborantin)
+                    <div class="mt-3">
+                        <label class="fw-bold">Observations du laborantin :</label>
+                        <p>{{ $bon->observations_laborantin }}</p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+            @endforeach
+            @endif
         </div>
     </div>
 </div>
 
-<!-- Modal Prescrire Examens -->
-<div class="modal fade" id="prescrireExamensModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <form method="POST" action="{{ route('medecin.consultations.ordonner-examens', $consultation->id_consultation) }}">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-microscope me-2"></i>Prescrire des examens</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="examens-list">
-                        <div class="examen-item row g-2 mb-2">
-                            <div class="col-7">
-                                <select name="examens[0][type]" class="form-select" required>
-                                    <option value="">Type examen</option>
-                                    <option value="NFS">NFS (Numération Formule Sanguine)</option>
-                                    <option value="Glycémie">Glycémie</option>
-                                    <option value="Bilan hépatique">Bilan hépatique</option>
-                                    <option value="Bilan rénal">Bilan rénal</option>
-                                    <option value="Bilan lipidique">Bilan lipidique</option>
-                                    <option value="Analyse d'urine">Analyse d'urine</option>
-                                    <option value="Radiologie">Radiologie</option>
-                                    <option value="Échographie">Échographie</option>
-                                    <option value="Scanner">Scanner</option>
-                                    <option value="IRM">IRM</option>
-                                </select>
-                            </div>
-                            <div class="col-3">
-                                <input type="date" name="examens[0][date]" class="form-control" required value="{{ date('Y-m-d') }}">
-                            </div>
-                            <div class="col-2">
-                                <button type="button" class="btn btn-danger remove-examen" style="display: none;">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" id="add-examen" class="btn btn-sm btn-outline-primary mt-2">
-                        <i class="fas fa-plus me-1"></i> Ajouter un examen
-                    </button>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Prescrire</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-@push('scripts')
-<script>
-    let examenIndex = 1;
-    
-    $(document).ready(function() {
-        $('#add-examen').on('click', function() {
-            const newItem = `
-                <div class="examen-item row g-2 mb-2">
-                    <div class="col-7">
-                        <select name="examens[${examenIndex}][type]" class="form-select" required>
-                            <option value="">Type examen</option>
-                            <option value="NFS">NFS (Numération Formule Sanguine)</option>
-                            <option value="Glycémie">Glycémie</option>
-                            <option value="Bilan hépatique">Bilan hépatique</option>
-                            <option value="Bilan rénal">Bilan rénal</option>
-                            <option value="Bilan lipidique">Bilan lipidique</option>
-                            <option value="Analyse d'urine">Analyse d'urine</option>
-                            <option value="Radiologie">Radiologie</option>
-                            <option value="Échographie">Échographie</option>
-                            <option value="Scanner">Scanner</option>
-                            <option value="IRM">IRM</option>
-                        </select>
-                    </div>
-                    <div class="col-3">
-                        <input type="date" name="examens[${examenIndex}][date]" class="form-control" required value="{{ date('Y-m-d') }}">
-                    </div>
-                    <div class="col-2">
-                        <button type="button" class="btn btn-danger remove-examen">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            $('#examens-list').append(newItem);
-            examenIndex++;
-            $('.remove-examen').show();
-        });
-        
-        $(document).on('click', '.remove-examen', function() {
-            $(this).closest('.examen-item').remove();
-            if ($('.examen-item').length === 1) {
-                $('.remove-examen').hide();
-            }
-        });
-    });
-</script>
+@push('styles')
+<style>
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .card-header {
+        font-weight: 600;
+    }
+    .border-info {
+        border-color: #0dcaf0 !important;
+    }
+    .border-success {
+        border-color: #28a745 !important;
+    }
+</style>
 @endpush
 @endsection

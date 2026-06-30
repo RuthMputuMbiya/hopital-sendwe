@@ -213,6 +213,14 @@ class User extends Authenticatable
     }
 
     /**
+     * ✅ Vérifier si l'utilisateur est un infirmier.
+     */
+    public function estInfirmier(): bool
+    {
+        return $this->role_id === 5;
+    }
+
+    /**
      * Vérifier si le compte est actif.
      */
     public function estActif(): bool
@@ -250,6 +258,7 @@ class User extends Authenticatable
             2 => 'Médecin',
             3 => 'Réceptionniste',
             4 => 'Laborantin',
+            5 => 'Infirmier',  // ✅ AJOUTÉ
         ];
         
         return $roles[$this->role_id] ?? 'Inconnu';
@@ -265,6 +274,7 @@ class User extends Authenticatable
             2 => 'primary',
             3 => 'success',
             4 => 'info',
+            5 => 'warning',  // ✅ AJOUTÉ - Couleur jaune pour l'infirmier
         ];
         
         return $colors[$this->role_id] ?? 'secondary';
@@ -303,7 +313,8 @@ class User extends Authenticatable
             'ADM' => 'gestionnaire',
             'DOC' => 'medecin',
             'LAB' => 'laborantin',
-            'REC' => 'receptionniste'
+            'REC' => 'receptionniste',
+            'INF' => 'infirmier',  // ✅ AJOUTÉ
         ];
         
         return $roles[$prefix] ?? null;
@@ -318,7 +329,8 @@ class User extends Authenticatable
             'gestionnaire' => 'ADM',
             'medecin' => 'DOC',
             'laborantin' => 'LAB',
-            'receptionniste' => 'REC'
+            'receptionniste' => 'REC',
+            'infirmier' => 'INF',  // ✅ AJOUTÉ
         ];
         
         $prefix = $prefixes[$role] ?? 'USR';
@@ -347,7 +359,8 @@ class User extends Authenticatable
             'gestionnaire' => 'gestionnaire.dashboard',
             'medecin' => 'medecin.dashboard',
             'laborantin' => 'laborantin.dashboard',
-            'receptionniste' => 'receptionniste.dashboard'
+            'receptionniste' => 'receptionniste.dashboard',
+            'infirmier' => 'infirmier.dashboard',  // ✅ AJOUTÉ
         ];
         
         return $dashboards[$role] ?? 'dashboard';

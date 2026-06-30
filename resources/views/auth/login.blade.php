@@ -106,6 +106,12 @@
             border-left: 4px solid #c0392b;
         }
 
+        .alert-warning {
+            background: #fff3e0;
+            color: #b7791f;
+            border-left: 4px solid #f39c12;
+        }
+
         .back-home {
             display: inline-flex;
             align-items: center;
@@ -271,6 +277,54 @@
             transform: translateY(-2px);
         }
 
+        .roles-info {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .roles-info p {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .roles-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .roles-badges .badge-role {
+            font-size: 10px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .badge-role.admin {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .badge-role.medecin {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .badge-role.receptionniste {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .badge-role.laborantin {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+        .badge-role.infirmier {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
         .login-footer {
             text-align: center;
             margin-top: 24px;
@@ -321,6 +375,12 @@
                     </div>
                 @endif
                 
+                @if(session('warning'))
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> {{ session('warning') }}
+                    </div>
+                @endif
+                
                 @if($errors->any())
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle"></i> {{ $errors->first() }}
@@ -365,8 +425,7 @@
                 
                 <a href="{{ route('register') }}" class="btn-register">
                     <i class="fas fa-user-plus"></i> Créer un compte
-                </a>
-                
+                </a>                
                 <div class="login-footer">
                     <p>© {{ date('Y') }} Hôpital Sendwe - Lubumbashi, République Démocratique du Congo</p>
                     <p><small>Application de gestion des dossiers médicaux</small></p>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Receptionniste;
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\Consultation;
 use App\Models\Examen;
 use App\Models\BonAnalyse;
@@ -47,7 +48,11 @@ class PatientController extends Controller
 
     public function create()
     {
-        $medecins = User::where('role_id', 2)->where('est_actif', true)->orderBy('nom')->get();
+        $medecins = User::where('role_id', 2)
+            ->where('est_actif', true)
+            ->orderBy('nom')
+            ->get();
+        
         return view('receptionniste.patients.create', compact('medecins'));
     }
 
@@ -113,26 +118,38 @@ class PatientController extends Controller
                 'contact_urgence_nom' => $validated['contact_urgence_nom'] ?? null,
                 'contact_urgence_telephone' => $validated['contact_urgence_telephone'] ?? null,
                 'contact_urgence_relation' => $validated['contact_urgence_relation'] ?? null,
-                'created_by' => Auth::id(),
             ]);
 
-            if ($request->medecin_attribue) {
-                $consultation = Consultation::create([
-                    'numero_consultation' => $this->genererNumeroConsultation(),
-                    'date_consultation' => now(),
-                    'heure_consultation' => now()->format('H:i:s'),
-                    'motif' => 'Première consultation - Nouveau patient',
-                    'symptomes' => 'À évaluer lors de la consultation',
-                    'diagnostic' => '',
-                    'prescription' => '',
-                    'id_patient' => $patient->id_patient,
-                    'medecin_id' => $request->medecin_attribue,
-                    'statut' => 'en_cours',
-                ]);
+            $consultation = Consultation::create([
+                'numero_consultation' => $this->genererNumeroConsultation(),
+                'date_consultation' => now(),
+                'heure_consultation' => now()->format('H:i:s'),
+                'motif' => 'Nouveau patient - En attente de bilan infirmier',
+                'symptomes' => 'À évaluer par l\'infirmier',
+                'diagnostic' => '',
+                'prescription' => '',
+                'id_patient' => $patient->id_patient,
+                'medecin_id' => $request->medecin_attribue ?? null,
+                'statut' => 'en_cours',
+                'statut_consultation' => 'en_attente_infirmier',
+            ]);
 
+            $infirmiers = User::where('role_id', 5)->where('est_actif', true)->get();
+            foreach ($infirmiers as $infirmier) {
                 Notification::create([
-                    'titre' => '📋 Nouveau patient attribué',
-                    'message' => "Le patient {$patient->nom_complet} (N°: {$numeroFiche}) vous a été attribué par " . auth()->user()->nom_complet,
+                    'titre' => '📋 Nouveau patient en attente de bilan',
+                    'message' => "Le patient {$patient->nom_complet} (N°: {$numeroFiche}) est en attente de bilan infirmier.",
+                    'type' => 'info',
+                    'user_id' => $infirmier->id_user,
+                    'lien' => route('infirmier.patients.attente'),
+                    'est_lue' => false,
+                ]);
+            }
+
+            if ($request->medecin_attribue) {
+                Notification::create([
+                    'titre' => '👨‍⚕️ Nouveau patient en attente',
+                    'message' => "Le patient {$patient->nom_complet} (N°: {$numeroFiche}) est en attente de bilan infirmier avant consultation.",
                     'type' => 'info',
                     'user_id' => $request->medecin_attribue,
                     'lien' => route('medecin.patients.show', $patient->id_patient),
@@ -141,8 +158,8 @@ class PatientController extends Controller
             }
 
             Notification::create([
-                'titre' => '📝 Nouveau patient enregistré',
-                'message' => "Le patient {$patient->nom_complet} (N°: {$numeroFiche}) a été enregistré avec succès",
+                'titre' => '✅ Patient enregistré avec succès',
+                'message' => "Le patient {$patient->nom_complet} (N°: {$numeroFiche}) a été envoyé chez l'infirmier.",
                 'type' => 'success',
                 'user_id' => auth()->id(),
                 'lien' => route('receptionniste.patients.show', $patient->id_patient),
@@ -152,7 +169,7 @@ class PatientController extends Controller
             DB::commit();
 
             return redirect()->route('receptionniste.patients.show', $patient->id_patient)
-                ->with('success', 'Patient enregistré avec succès ! Numéro fiche: ' . $numeroFiche);
+                ->with('success', '✅ Patient enregistré avec succès ! Il a été envoyé chez l\'infirmier pour le bilan initial.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -164,19 +181,23 @@ class PatientController extends Controller
     {
         $patient = Patient::findOrFail($id);
         $medecinTraitant = $patient->consultations()->latest('date_consultation')->first()?->medecin;
+        $consultation = $patient->consultations()->latest()->first();
+        
+        // ✅ Calcul de l'âge avec vérification
+        $age = $patient->date_naissance ? Carbon::parse($patient->date_naissance)->age : null;
         
         $stats = [
             'total_consultations' => $patient->consultations()->count(),
             'total_examens' => $patient->examens()->count(),
             'total_bons_analyse' => $patient->bonsAnalyse()->count(),
-            'age' => $patient->age,
+            'age' => $age,
         ];
         
         $consultations = $patient->consultations()->orderBy('date_consultation', 'desc')->paginate(10);
         $examens = $patient->examens()->orderBy('date_examen', 'desc')->paginate(10);
         $bonsAnalyse = $patient->bonsAnalyse()->orderBy('created_at', 'desc')->paginate(10);
         
-        return view('receptionniste.patients.show', compact('patient', 'stats', 'consultations', 'examens', 'bonsAnalyse', 'medecinTraitant'));
+        return view('receptionniste.patients.show', compact('patient', 'stats', 'consultations', 'examens', 'bonsAnalyse', 'medecinTraitant', 'consultation'));
     }
 
     public function edit($id)

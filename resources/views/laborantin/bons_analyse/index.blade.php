@@ -18,66 +18,81 @@
     <div class="row g-4 mb-4">
         <div class="col-md-3">
             <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-flask"></i></div>
-                <div class="stat-number">{{ number_format($stats['total'] ?? 0) }}</div>
+                <div class="stat-icon"><i class="fas fa-flask text-primary"></i></div>
+                <div class="stat-number text-primary">{{ number_format($stats['total'] ?? 0) }}</div>
                 <div class="stat-label">Total bons</div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
-                <div class="stat-number">{{ number_format($stats['en_attente'] ?? 0) }}</div>
+                <div class="stat-icon"><i class="fas fa-hourglass-half text-warning"></i></div>
+                <div class="stat-number text-warning">{{ number_format($stats['en_attente'] ?? 0) }}</div>
                 <div class="stat-label">En attente</div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-spinner"></i></div>
-                <div class="stat-number">{{ number_format($stats['en_cours'] ?? 0) }}</div>
-                <div class="stat-label">En cours</div>
+                <div class="stat-icon"><i class="fas fa-syringe text-info"></i></div>
+                <div class="stat-number text-info">{{ number_format($stats['preleve'] ?? 0) }}</div>
+                <div class="stat-label">Prélevés</div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-number">{{ number_format($stats['termines'] ?? 0) }}</div>
+                <div class="stat-icon"><i class="fas fa-check-circle text-success"></i></div>
+                <div class="stat-number text-success">{{ number_format($stats['termines'] ?? 0) }}</div>
                 <div class="stat-label">Terminés</div>
             </div>
         </div>
     </div>
 
     <!-- Filtres -->
-    <div class="card mb-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body">
             <form method="GET" class="row g-3">
                 <div class="col-md-5">
-                    <input type="text" name="search" class="form-control" placeholder="Rechercher..." value="{{ $search ?? '' }}">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control border-start-0" 
+                               placeholder="Rechercher par numéro ou patient..." value="{{ $search ?? '' }}">
+                    </div>
                 </div>
                 <div class="col-md-3">
                     <select name="statut" class="form-select">
                         <option value="">Tous les statuts</option>
-                        <option value="en_attente" {{ ($statut ?? '') == 'en_attente' ? 'selected' : '' }}>En attente</option>
-                        <option value="en_cours" {{ ($statut ?? '') == 'en_cours' ? 'selected' : '' }}>En cours</option>
-                        <option value="termine" {{ ($statut ?? '') == 'termine' ? 'selected' : '' }}>Terminé</option>
+                        <option value="en_attente" {{ ($statut ?? '') == 'en_attente' ? 'selected' : '' }}>⏳ En attente</option>
+                        <option value="preleve" {{ ($statut ?? '') == 'preleve' ? 'selected' : '' }}>🧪 Prélevé</option>
+                        <option value="analyse" {{ ($statut ?? '') == 'analyse' ? 'selected' : '' }}>🔬 En analyse</option>
+                        <option value="termine" {{ ($statut ?? '') == 'termine' ? 'selected' : '' }}>✅ Terminé</option>
+                        <option value="retourne" {{ ($statut ?? '') == 'retourne' ? 'selected' : '' }}>📤 Retourné</option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-2"></i>Filtrer</button>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i> Filtrer
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Tableau -->
-    <div class="card">
-        <div class="card-header">
-            <i class="fas fa-list me-2"></i> Bons d'analyse
-            <span class="badge bg-primary ms-2">{{ $bons->total() }}</span>
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white rounded-top-4 border-0 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-list me-2 text-primary"></i>
+                    <span class="fw-bold">Bons d'analyse</span>
+                    <span class="badge bg-primary ms-2">{{ $bons->total() }}</span>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead>
+                    <thead class="table-light">
                         <tr>
                             <th>N° Bon</th>
                             <th>Patient</th>
@@ -98,18 +113,16 @@
                             </td>
                             <td>Dr. {{ $bon->medecin->nom_complet ?? 'N/A' }}</td>
                             <td>
-                                {{ $bon->date_demande->format('d/m/Y') }}<br>
+                                {{ Carbon\Carbon::parse($bon->date_demande)->format('d/m/Y') }}<br>
                                 <small class="text-muted">{{ $bon->heure_demande }}</small>
                             </td>
                             <td>
                                 <span class="badge bg-{{ $bon->priorite == 'urgent' ? 'danger' : ($bon->priorite == 'moyen' ? 'warning' : 'primary') }}">
-                                    {{ $bon->priorite == 'urgent' ? 'Urgent' : ($bon->priorite == 'moyen' ? 'Moyen' : 'Normal') }}
+                                    {{ $bon->priorite == 'urgent' ? '🚨 Urgent' : ($bon->priorite == 'moyen' ? '⚠️ Moyen' : '✅ Normal') }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $bon->statut == 'termine' ? 'success' : ($bon->statut == 'en_cours' ? 'warning' : 'secondary') }}">
-                                    {{ $bon->statut == 'termine' ? 'Terminé' : ($bon->statut == 'en_cours' ? 'En cours' : 'En attente') }}
-                                </span>
+                                {!! $bon->statut_badge !!}
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
@@ -121,6 +134,12 @@
                                         <a href="{{ route('laborantin.bons-analyse.prelever-form', $bon->id_bon) }}" 
                                            class="btn btn-sm btn-warning" title="Prélever">
                                             <i class="fas fa-syringe"></i>
+                                        </a>
+                                    @endif
+                                    @if($bon->statut == 'preleve' || $bon->statut == 'analyse')
+                                        <a href="{{ route('laborantin.bons-analyse.resultats-form', $bon->id_bon) }}" 
+                                           class="btn btn-sm btn-info" title="Saisir résultats">
+                                            <i class="fas fa-flask"></i>
                                         </a>
                                     @endif
                                     <a href="{{ route('laborantin.bons-analyse.print', $bon->id_bon) }}" 
@@ -148,3 +167,77 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    .stat-icon {
+        width: 45px;
+        height: 45px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        font-size: 20px;
+    }
+    .stat-number {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+    .stat-label {
+        color: #6c757d;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .card {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    .card-header {
+        border-bottom: 1px solid #e9ecef !important;
+    }
+    .table thead th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        font-weight: 600;
+        border-bottom: none;
+    }
+    .table tbody td {
+        vertical-align: middle;
+        font-size: 13px;
+        padding: 10px 12px;
+    }
+    .badge {
+        font-weight: 500;
+        font-size: 11px;
+        padding: 5px 12px;
+    }
+    .btn-sm {
+        font-size: 12px;
+        padding: 4px 14px;
+    }
+    code {
+        background: #f8f9fa;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+    }
+</style>
+@endpush

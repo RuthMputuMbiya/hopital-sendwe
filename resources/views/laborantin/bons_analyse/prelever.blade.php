@@ -98,6 +98,133 @@
                         </div>
                     </div>
 
+                    <!-- ⭐ BILAN INFIRMIER - AJOUTÉ ⭐ -->
+                    @if($bon->poids_infirmier || $bon->taille_infirmier || $bon->temperature_infirmier)
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fas fa-user-nurse me-2"></i> 
+                                    Bilan initial - Infirmier
+                                    @if($bon->infirmier)
+                                    <span class="badge bg-light text-dark ms-2">
+                                        {{ $bon->infirmier->nom_complet ?? 'N/A' }}
+                                    </span>
+                                    @endif
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        @if($bon->poids_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">Poids</label>
+                                                <p class="fw-bold">{{ $bon->poids_infirmier }} kg</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->taille_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">Taille</label>
+                                                <p class="fw-bold">{{ $bon->taille_infirmier }} cm</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->temperature_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">Température</label>
+                                                <p class="fw-bold">{{ $bon->temperature_infirmier }} °C</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->tension_arterielle_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">Tension</label>
+                                                <p class="fw-bold">{{ $bon->tension_arterielle_infirmier }}</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->frequence_cardiaque_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">FC</label>
+                                                <p class="fw-bold">{{ $bon->frequence_cardiaque_infirmier }} bpm</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->frequence_respiratoire_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">FR</label>
+                                                <p class="fw-bold">{{ $bon->frequence_respiratoire_infirmier }}/min</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->imc_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">IMC</label>
+                                                <p class="fw-bold">{{ $bon->imc_infirmier }}</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        @if($bon->spo2_infirmier)
+                                        <div class="col-md-3">
+                                            <div class="info-item">
+                                                <label class="text-muted small">SpO2</label>
+                                                <p class="fw-bold">{{ $bon->spo2_infirmier }}%</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @if($bon->motif_infirmier || $bon->symptomes_infirmier || $bon->observations_infirmier)
+                                    <hr>
+                                    <div class="row">
+                                        @if($bon->motif_infirmier)
+                                        <div class="col-md-4">
+                                            <label class="text-muted small">Motif</label>
+                                            <p class="fw-bold">{{ $bon->motif_infirmier }}</p>
+                                        </div>
+                                        @endif
+                                        @if($bon->symptomes_infirmier)
+                                        <div class="col-md-4">
+                                            <label class="text-muted small">Symptômes</label>
+                                            <p class="fw-bold">{{ $bon->symptomes_infirmier }}</p>
+                                        </div>
+                                        @endif
+                                        @if($bon->observations_infirmier)
+                                        <div class="col-md-4">
+                                            <label class="text-muted small">Observations</label>
+                                            <p class="fw-bold">{{ $bon->observations_infirmier }}</p>
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @endif
+                                    @if($bon->allergies_infirmier || $bon->traitements_infirmier)
+                                    <hr>
+                                    <div class="row">
+                                        @if($bon->allergies_infirmier)
+                                        <div class="col-md-6">
+                                            <label class="text-muted small text-danger">Allergies</label>
+                                            <p class="fw-bold text-danger">{{ $bon->allergies_infirmier }}</p>
+                                        </div>
+                                        @endif
+                                        @if($bon->traitements_infirmier)
+                                        <div class="col-md-6">
+                                            <label class="text-muted small">Traitements</label>
+                                            <p class="fw-bold">{{ $bon->traitements_infirmier }}</p>
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <!-- ========================================== -->
                     <!-- 2. MÉDECIN/CLINICIEN DEMANDEUR              -->
                     <!-- ========================================== -->
@@ -362,7 +489,7 @@
                             <div class="col-md-12">
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Information :</strong> Une fois le prélèvement enregistré, le bon passera en statut "En cours" et vous pourrez saisir les résultats.
+                                    <strong>Information :</strong> Une fois le prélèvement enregistré, le bon passera en statut "Prélevé" et vous pourrez saisir les résultats.
                                 </div>
                                 <div class="d-flex justify-content-end gap-2">
                                     <a href="{{ route('laborantin.bons-analyse.index') }}" class="btn btn-outline-secondary">
@@ -419,6 +546,22 @@
     .card-header h6 {
         margin-bottom: 0;
         color: #1a4d6b;
+    }
+    .info-item {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+    }
+    .info-item label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+    .info-item p {
+        margin-bottom: 0;
+        font-size: 14px;
     }
 </style>
 @endpush

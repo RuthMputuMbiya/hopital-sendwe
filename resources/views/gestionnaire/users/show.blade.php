@@ -23,7 +23,7 @@
     </div>
 
     <div class="row">
-        <!-- Colonne gauche : Profil -->
+        <!-- Colonne gauche -->
         <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
             <div class="card">
                 <div class="card-body text-center">
@@ -43,7 +43,11 @@
                         @endif
                         
                         @if($user->role)
-                            <span class="badge badge-primary ms-1">{{ $user->role->nom_role }}</span>
+                            @if($user->role->id_role == 5)
+                                <span class="badge badge-warning ms-1">🩺 {{ $user->role->nom_role }}</span>
+                            @else
+                                <span class="badge badge-primary ms-1">{{ $user->role->nom_role }}</span>
+                            @endif
                         @endif
                     </div>
                     
@@ -71,7 +75,6 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <!-- ✅ FORMULAIRE POST pour réinitialiser -->
                         <form action="{{ route('gestionnaire.users.reset-password', $user->id_user) }}" 
                               method="POST" 
                               onsubmit="return confirm('Réinitialiser le mot de passe de {{ $user->prenom }} {{ $user->nom }} ?')">
@@ -103,7 +106,7 @@
             </div>
         </div>
         
-        <!-- Colonne droite : Informations -->
+        <!-- Colonne droite -->
         <div class="col-md-8" data-aos="fade-up" data-aos-delay="200">
             <div class="card mb-4">
                 <div class="card-header">
@@ -176,6 +179,19 @@
                             <div class="text-center p-3 border rounded">
                                 <h3 class="text-primary mb-0">{{ number_format($stats['examens_termines'] ?? 0) }}</h3>
                                 <small class="text-muted">Examens terminés</small>
+                            </div>
+                        </div>
+                        @elseif($user->estInfirmier())
+                        <div class="col-md-6">
+                            <div class="text-center p-3 border rounded">
+                                <h3 class="text-primary mb-0">{{ number_format($stats['bilans_realises'] ?? 0) }}</h3>
+                                <small class="text-muted">Bilans réalisés</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center p-3 border rounded">
+                                <h3 class="text-primary mb-0">{{ number_format($stats['patients_pris_en_charge'] ?? 0) }}</h3>
+                                <small class="text-muted">Patients pris en charge</small>
                             </div>
                         </div>
                         @endif

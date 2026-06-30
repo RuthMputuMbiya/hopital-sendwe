@@ -52,6 +52,10 @@
         background: #e2e3e5;
         color: #383d41;
     }
+    .stat-trend.warning {
+        background: #fff3e0;
+        color: #92400e;
+    }
     .card {
         border: none;
         border-radius: 15px;
@@ -67,6 +71,11 @@
         padding: 1rem 1.5rem;
         font-weight: 600;
         border-radius: 15px 15px 0 0 !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
     .card-body {
         padding: 1.5rem;
@@ -103,6 +112,13 @@
     .badge-warning {
         background: #ffc107;
         color: #212529;
+        padding: 0.3rem 0.8rem;
+        border-radius: 50px;
+        font-size: 0.7rem;
+    }
+    .badge-info {
+        background: #d1ecf1;
+        color: #0c5460;
         padding: 0.3rem 0.8rem;
         border-radius: 50px;
         font-size: 0.7rem;
@@ -217,7 +233,9 @@
         </div>
     </div>
 
-    <!-- Statistiques Ligne 1 -->
+    <!-- ============================================================
+    STATISTIQUES LIGNE 1 - PERSONNEL
+    ============================================================ -->
     <div class="row g-3 g-md-4 mb-4">
         <div class="col-6 col-xl-3">
             <div class="stat-card">
@@ -245,16 +263,26 @@
         </div>
         <div class="col-6 col-xl-3">
             <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-user-nurse" style="color: #f59e0b;"></i></div>
+                <div class="stat-number">{{ number_format($stats['total_infirmiers'] ?? 0) }}</div>
+                <div class="stat-label">Infirmiers</div>
+                <div class="stat-trend warning"><i class="fas fa-arrow-up me-1"></i> 🩺 En service</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    STATISTIQUES LIGNE 2 - ACTIVITÉ
+    ============================================================ -->
+    <div class="row g-3 g-md-4 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-notes-medical"></i></div>
                 <div class="stat-number">{{ number_format($stats['total_patients'] ?? 0) }}</div>
                 <div class="stat-label">Patients</div>
                 <div class="stat-trend up"><i class="fas fa-arrow-up me-1"></i> Total général</div>
             </div>
         </div>
-    </div>
-
-    <!-- Statistiques Ligne 2 -->
-    <div class="row g-3 g-md-4 mb-4">
         <div class="col-6 col-xl-3">
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-stethoscope"></i></div>
@@ -282,6 +310,36 @@
                 <div class="stat-trend stable"><i class="fas fa-database me-1"></i> Répertoriées</div>
             </div>
         </div>
+    </div>
+
+    <!-- ============================================================
+    STATISTIQUES LIGNE 3 - BONS D'ANALYSE ET ACTIVITÉ
+    ============================================================ -->
+    <div class="row g-3 g-md-4 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-file-medical" style="color: #17a2b8;"></i></div>
+                <div class="stat-number">{{ number_format($stats['total_bons_analyse'] ?? 0) }}</div>
+                <div class="stat-label">Bons d'analyse</div>
+                <div class="stat-trend stable"><i class="fas fa-database me-1"></i> Enregistrés</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+                <div class="stat-number">{{ number_format($stats['patients_aujourdhui'] ?? 0) }}</div>
+                <div class="stat-label">Patients aujourd'hui</div>
+                <div class="stat-trend up"><i class="fas fa-user-plus me-1"></i> Nouveaux</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+                <div class="stat-number">{{ number_format($stats['consultations_aujourdhui'] ?? 0) }}</div>
+                <div class="stat-label">Consultations aujourd'hui</div>
+                <div class="stat-trend up"><i class="fas fa-stethoscope me-1"></i> Aujourd'hui</div>
+            </div>
+        </div>
         <div class="col-6 col-xl-3">
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
@@ -292,7 +350,9 @@
         </div>
     </div>
 
-    <!-- Graphiques -->
+    <!-- ============================================================
+    GRAPHIQUES
+    ============================================================ -->
     <div class="row g-3 g-md-4 mb-4">
         <div class="col-xl-7">
             <div class="card">
@@ -354,7 +414,9 @@
         </div>
     </div>
 
-    <!-- Dernières consultations -->
+    <!-- ============================================================
+    DERNIÈRES CONSULTATIONS
+    ============================================================ -->
     <div class="row g-3 g-md-4">
         <div class="col-12">
             <div class="card">
@@ -373,6 +435,7 @@
                                     <th>Date</th>
                                     <th>Patient</th>
                                     <th>Médecin</th>
+                                    <th>Infirmier</th>
                                     <th>Diagnostic</th>
                                     <th>Statut</th>
                                     <th class="text-center">Actions</th>
@@ -388,11 +451,34 @@
                                         <strong>{{ $consultation->patient->nom_complet ?? 'N/A' }}</strong>
                                     </td>
                                     <td>{{ $consultation->medecin->nom_complet ?? 'N/A' }}</td>
+                                    <td>
+                                        @if($consultation->infirmier)
+                                            <span class="badge badge-warning">🩺 {{ $consultation->infirmier->nom_complet }}</span>
+                                        @else
+                                            <span class="badge badge-secondary">Non assigné</span>
+                                        @endif
+                                    </td>
                                     <td>{{ \Illuminate\Support\Str::limit($consultation->diagnostic ?? 'Non renseigné', 40) }}</td>
                                     <td>
-                                        <span class="badge badge-success">
-                                            <i class="fas fa-check-circle me-1"></i> Terminé
-                                        </span>
+                                        @if($consultation->statut_consultation == 'termine' || $consultation->statut == 'termine')
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check-circle me-1"></i> Terminé
+                                            </span>
+                                        @elseif($consultation->statut_consultation == 'en_attente_infirmier')
+                                            <span class="badge badge-warning">
+                                                <i class="fas fa-clock me-1"></i> En attente infirmier
+                                            </span>
+                                        @elseif($consultation->statut_consultation == 'bilan_fait')
+                                            <span class="badge badge-info">
+                                                <i class="fas fa-check me-1"></i> Bilan fait
+                                            </span>
+                                        @elseif($consultation->statut_consultation == 'en_consultation')
+                                            <span class="badge badge-primary">
+                                                <i class="fas fa-stethoscope me-1"></i> En consultation
+                                            </span>
+                                        @else
+                                            <span class="badge badge-secondary">{{ $consultation->statut ?? 'En cours' }}</span>
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         <a href="#" class="btn btn-sm btn-outline-primary" title="Voir">
@@ -402,7 +488,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted">
+                                    <td colspan="7" class="text-center py-5 text-muted">
                                         <i class="fas fa-inbox fa-2x d-block mb-2"></i>
                                         Aucune consultation récente
                                     </td>

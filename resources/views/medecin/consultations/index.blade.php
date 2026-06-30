@@ -42,17 +42,17 @@
         <div class="col-md-3" data-aos="fade-up" data-aos-delay="300">
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
-                <div class="stat-number">{{ number_format($stats['en_cours'] ?? 0) }}</div>
-                <div class="stat-label">En cours</div>
+                <div class="stat-number">{{ number_format($stats['en_attente_infirmier'] ?? 0) }}</div>
+                <div class="stat-label">En attente infirmier</div>
                 <div class="stat-trend warning">À traiter</div>
             </div>
         </div>
         <div class="col-md-3" data-aos="fade-up" data-aos-delay="400">
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-number">{{ number_format($stats['termines'] ?? 0) }}</div>
-                <div class="stat-label">Terminées</div>
-                <div class="stat-trend up">Ce mois: {{ $stats['ce_mois'] ?? 0 }}</div>
+                <div class="stat-number">{{ number_format($stats['bilan_fait'] ?? 0) }}</div>
+                <div class="stat-label">Bilan fait</div>
+                <div class="stat-trend up">En attente médecin</div>
             </div>
         </div>
     </div>
@@ -74,7 +74,9 @@
                 <div class="col-md-2">
                     <select name="statut" class="form-select">
                         <option value="">Tous les statuts</option>
-                        <option value="en_cours" {{ ($statut ?? '') == 'en_cours' ? 'selected' : '' }}>En cours</option>
+                        <option value="en_attente_infirmier" {{ ($statut ?? '') == 'en_attente_infirmier' ? 'selected' : '' }}>En attente infirmier</option>
+                        <option value="bilan_fait" {{ ($statut ?? '') == 'bilan_fait' ? 'selected' : '' }}>Bilan fait</option>
+                        <option value="en_consultation" {{ ($statut ?? '') == 'en_consultation' ? 'selected' : '' }}>En consultation</option>
                         <option value="termine" {{ ($statut ?? '') == 'termine' ? 'selected' : '' }}>Terminé</option>
                         <option value="annule" {{ ($statut ?? '') == 'annule' ? 'selected' : '' }}>Annulé</option>
                     </select>
@@ -108,8 +110,8 @@
                             <th>N° Consultation</th>
                             <th>Date</th>
                             <th>Patient</th>
+                            <th>Infirmier</th>
                             <th>Diagnostic</th>
-                            <th>Maladie</th>
                             <th>Statut</th>
                             <th>Actions</th>
                         </tr>
@@ -117,7 +119,7 @@
                     <tbody>
                         @forelse($consultations as $consultation)
                         <tr>
-                            <td><code>{{ $consultation->numero_consultacion ?? 'N/A' }}</code></td>
+                            <td><code>{{ $consultation->numero_consultation ?? 'N/A' }}</code></td>
                             <td>
                                 {{ isset($consultation->date_consultation) ? $consultation->date_consultation->format('d/m/Y') : 'N/A' }}<br>
                                 <small class="text-muted">{{ $consultation->heure_consultation ?? '' }}</small>
@@ -126,22 +128,19 @@
                                 <strong>{{ $consultation->patient->nom_complet ?? 'N/A' }}</strong><br>
                                 <small class="text-muted">{{ $consultation->patient->numero_fiche ?? '' }}</small>
                             </td>
-                            <td>{{ Str::limit($consultation->diagnostic ?? 'N/A', 40) }}</td>
                             <td>
-                                @if($consultation->maladie)
-                                    <span class="badge bg-info">{{ $consultation->maladie->nom_maladie }}</span>
+                                @if($consultation->infirmier)
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-user-nurse me-1"></i>
+                                        {{ $consultation->infirmier->nom_complet ?? 'N/A' }}
+                                    </span>
                                 @else
-                                    <span class="badge bg-secondary">Non spécifiée</span>
+                                    <span class="badge bg-secondary">Non assigné</span>
                                 @endif
                             </td>
+                            <td>{{ Str::limit($consultation->diagnostic ?? 'N/A', 40) }}</td>
                             <td>
-                                @if($consultation->statut == 'en_cours')
-                                    <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-half me-1"></i> En cours</span>
-                                @elseif($consultation->statut == 'termine')
-                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Terminé</span>
-                                @else
-                                    <span class="badge bg-danger"><i class="fas fa-ban me-1"></i> Annulé</span>
-                                @endif
+                                {!! $consultation->statut_consultation_badge !!}
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
@@ -149,17 +148,16 @@
                                        class="btn btn-sm btn-outline-primary" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @if($consultation->statut != 'termine')
+                                    @if($consultation->statut_consultation != 'termine')
                                     <a href="{{ route('medecin.consultations.edit', $consultation->id_consultation) }}" 
                                        class="btn btn-sm btn-outline-warning" title="Modifier">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     @endif
-                                    <a href="{{ route('medecin.bons-analyse.create', $consultation->id_patient) }}" 
+                                    <a href="{{ route('medecin.bons-analyse.create', ['patientId' => $consultation->id_patient]) }}" 
                                        class="btn btn-sm btn-outline-info" title="Bon d'analyse">
                                         <i class="fas fa-flask"></i>
                                     </a>
-                                    <!-- ⭐ BOUTON IMPRIMER CORRIGÉ ⭐ -->
                                     <a href="{{ route('medecin.bons-analyse.print-by-patient', $consultation->id_patient) }}" 
                                        class="btn btn-sm btn-outline-secondary" 
                                        title="Imprimer le bon d'analyse"
@@ -189,4 +187,56 @@
         </div>
     </div>
 </div>
+
+@push('styles')
+<style>
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border-left: 4px solid #1a4d6b;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+    }
+    .stat-icon {
+        font-size: 28px;
+        color: #1a4d6b;
+        opacity: 0.3;
+        position: absolute;
+        right: 15px;
+        top: 15px;
+    }
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a4d6b;
+        margin-bottom: 5px;
+    }
+    .stat-label {
+        font-size: 14px;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .stat-trend {
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 5px;
+    }
+    .stat-trend.up {
+        color: #28a745;
+    }
+    .stat-trend.warning {
+        color: #ffc107;
+    }
+    .stat-trend.down {
+        color: #dc3545;
+    }
+</style>
+@endpush
 @endsection

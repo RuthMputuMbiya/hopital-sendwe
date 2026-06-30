@@ -73,7 +73,7 @@
                         </span>
                         <input type="text" name="search" class="form-control border-start-0" 
                                placeholder="Rechercher par nom, prénom, matricule, téléphone, numéro fiche..." 
-                               value="{{ $search }}">
+                               value="{{ $search ?? '' }}">
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -108,6 +108,7 @@
                             <th>N° Fiche</th>
                             <th>Nom complet</th>
                             <th>Sexe</th>
+                            <th>Âge</th>
                             <th>Date naissance</th>
                             <th>Téléphone</th>
                             <th>Date création</th>
@@ -119,9 +120,6 @@
                         <tr>
                             <td>
                                 <code>{{ $patient->numero_fiche }}</code>
-                                @if($patient->created_by == auth()->id())
-                                    <span class="badge bg-success ms-1" title="Enregistré par vous">📝</span>
-                                @endif
                             </td>
                             <td>
                                 <strong>{{ $patient->prenom }} {{ $patient->nom }}</strong><br>
@@ -129,9 +127,16 @@
                             </td>
                             <td>
                                 @if($patient->sexe === 'M')
-                                    <span class="badge badge-info"><i class="fas fa-mars"></i> Masculin</span>
+                                    <span class="badge bg-info"><i class="fas fa-mars"></i> Masculin</span>
                                 @else
-                                    <span class="badge badge-danger"><i class="fas fa-venus"></i> Féminin</span>
+                                    <span class="badge bg-danger"><i class="fas fa-venus"></i> Féminin</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($patient->age)
+                                    <span class="fw-bold text-primary">{{ $patient->age }} ans</span>
+                                @else
+                                    <span class="text-muted">-</span>
                                 @endif
                             </td>
                             <td>{{ \Carbon\Carbon::parse($patient->date_naissance)->format('d/m/Y') }}</td>
@@ -171,7 +176,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <i class="fas fa-notes-medical fa-3x text-muted mb-3 d-block"></i>
                                 <p class="text-muted mb-0">Aucun patient trouvé</p>
                                 <a href="{{ route('receptionniste.patients.create') }}" class="btn btn-sm btn-primary mt-3">
@@ -192,7 +197,7 @@
                     </small>
                 </div>
                 <div>
-                    {{ $patients->appends(['search' => $search])->links() }}
+                    {{ $patients->appends(['search' => $search ?? ''])->links() }}
                 </div>
             </div>
         </div>
@@ -202,16 +207,60 @@
 
 @push('styles')
 <style>
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border-left: 4px solid #1a4d6b;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+    }
+    .stat-icon {
+        font-size: 28px;
+        color: #1a4d6b;
+        opacity: 0.3;
+        position: absolute;
+        right: 15px;
+        top: 15px;
+    }
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a4d6b;
+        margin-bottom: 5px;
+    }
+    .stat-label {
+        font-size: 14px;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .stat-trend {
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 5px;
+    }
+    .stat-trend.up {
+        color: #28a745;
+    }
     .badge-info {
         background-color: #e0f2fe;
         color: #0369a1;
+    }
+    .badge-danger {
+        background-color: #fee7e7;
+        color: #dc3545;
     }
     .table tbody tr {
         transition: all 0.2s ease;
     }
     .table tbody tr:hover {
         background-color: #eef2ff;
-        transform: scale(1.01);
     }
 </style>
 @endpush

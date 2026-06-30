@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use App\Models\Consultation;
 use App\Models\Maladie;
-use App\Models\Examen;
+use App\Models\Bilan;
+use App\Models\BonAnalyse;
+use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,9 +18,6 @@ use Carbon\Carbon;
 
 class ConsultationController extends Controller
 {
-    /**
-     * Liste des consultations du médecin
-     */
     public function index(Request $request)
     {
         $search = $request->get('search');
@@ -26,15 +25,16 @@ class ConsultationController extends Controller
         $dateDebut = $request->get('date_debut');
         $dateFin = $request->get('date_fin');
         
-        $query = Consultation::with(['patient', 'maladie'])
+        $query = Consultation::with(['patient', 'maladie', 'infirmier'])
             ->where('medecin_id', Auth::id());
         
         if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('numero_consultacion', 'LIKE', "%{$search}%")
+                $q->where('numero_consultation', 'LIKE', "%{$search}%")
                   ->orWhere('diagnostic', 'LIKE', "%{$search}%")
                   ->orWhereHas('patient', function($q2) use ($search) {
                       $q2->where('nom', 'LIKE', "%{$search}%")
+                         ->orWhere('postnom', 'LIKE', "%{$search}%")
                          ->orWhere('prenom', 'LIKE', "%{$search}%")
                          ->orWhere('numero_fiche', 'LIKE', "%{$search}%");
                   });
@@ -42,7 +42,7 @@ class ConsultationController extends Controller
         }
         
         if ($statut) {
-            $query->where('statut', $statut);
+            $query->where('statut_consultation', $statut);
         }
         
         if ($dateDebut) {
@@ -58,47 +58,110 @@ class ConsultationController extends Controller
         $stats = [
             'total' => Consultation::where('medecin_id', Auth::id())->count(),
             'aujourdhui' => Consultation::where('medecin_id', Auth::id())->whereDate('date_consultation', today())->count(),
-            'en_cours' => Consultation::where('medecin_id', Auth::id())->where('statut', 'en_cours')->count(),
-            'termines' => Consultation::where('medecin_id', Auth::id())->where('statut', 'termine')->count(),
+            'en_attente_infirmier' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'en_attente_infirmier')->count(),
+            'bilan_fait' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'bilan_fait')->count(),
+            'en_consultation' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'en_consultation')->count(),
+            'termines' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'termine')->count(),
+            'annules' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'annule')->count(),
             'ce_mois' => Consultation::where('medecin_id', Auth::id())->whereMonth('date_consultation', now()->month)->count(),
         ];
         
         return view('medecin.consultations.index', compact('consultations', 'stats', 'search', 'statut', 'dateDebut', 'dateFin'));
     }
 
-    /**
-     * Formulaire de création d'une consultation
-     */
     public function create($patientId = null)
     {
         $patients = Patient::orderBy('nom')->get();
         $maladies = Maladie::orderBy('nom_maladie')->get();
         $selectedPatient = $patientId ? Patient::find($patientId) : null;
+        $bilanInfirmier = null;
+        $infirmier = null;
         
-        return view('medecin.consultations.create', compact('patients', 'maladies', 'selectedPatient'));
+        if ($patientId) {
+            // ✅ RECHERCHE DIRECTE DANS LA TABLE BILANS
+            try {
+                $bilanInfirmier = Bilan::where('id_patient', $patientId)
+                    ->with('infirmier')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            } catch (\Exception $e) {
+                // Si la colonne n'existe pas, chercher via consultation
+            }
+            
+            // Si pas trouvé, chercher via consultation
+            if (!$bilanInfirmier) {
+                try {
+                    $bilanInfirmier = Bilan::whereHas('consultation', function($query) use ($patientId) {
+                            $query->where('id_patient', $patientId);
+                        })
+                        ->with('infirmier')
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                } catch (\Exception $e) {
+                    // Ignorer
+                }
+            }
+            
+            // ✅ RÉCUPÉRER L'INFIRMIER
+            if ($bilanInfirmier) {
+                if ($bilanInfirmier->infirmier) {
+                    $infirmier = $bilanInfirmier->infirmier;
+                } else if ($bilanInfirmier->id_infirmier) {
+                    $infirmier = User::find($bilanInfirmier->id_infirmier);
+                }
+            }
+        }
+        
+        $examens = [
+            'parasitologie' => [
+                'culot_urines' => 'Culot Urines',
+                'sucre_urines' => 'Sucre Urines',
+                'albuminurie' => 'Albuminurie',
+                'ph_urines' => 'pH Urines',
+                'acetone_urines' => 'Acétone Urines',
+                'selles_frais' => 'Selles à frais',
+                'h_pylori' => 'H. Pylori',
+                'tdr_malaria' => 'TDR Malaria',
+                'goutte_epaisse' => 'Goutte Épaisse',
+                'goutte_fraiche' => 'Goutte Fraîche',
+                'trypanosome' => 'Recherche Trypanosome'
+            ],
+            'hematologie' => [
+                'gs' => 'GS', 'rh' => 'Rh', 'hct' => 'Hct', 'gb' => 'GB',
+                'gr' => 'GR', 'fl' => 'FL', 'vs' => 'VS', 'plt' => 'PLT',
+                'reticulocytes' => 'Réticulocytes', 'vgm' => 'VGM',
+                'ccmh' => 'CCMH', 'tcmh' => 'TCMH'
+            ],
+            'microbiologie' => [
+                'gram_ponctions' => 'Gram-Ponctions', 'cytologie' => 'Cytologie',
+                'rivalta' => 'Rivalta', 'ziehl' => 'Ziehl',
+                'elements_gram' => 'Éléments Gram', 'gram' => 'Gram'
+            ],
+            'biochimie' => [
+                'glycemie' => 'Glycémie', 'uree' => 'Urée',
+                'creatinine' => 'Créatinine', 'cholesterol_total' => 'Cholestérol Total',
+                'triglycerides' => 'Triglycérides', 'hdl' => 'HDL-Cholestérol',
+                'ldl' => 'LDL-Cholestérol', 'acide_urique' => 'Acide urique'
+            ],
+            'immuno_serologie' => [
+                'aghbs' => 'AgHBS', 'achcv' => 'AcHCV',
+                'rpr_vdrl' => 'RPR/VDRL', 'aslo' => 'ASLO', 'crp' => 'CRP'
+            ]
+        ];
+        
+        return view('medecin.consultations.create', compact('patients', 'maladies', 'selectedPatient', 'bilanInfirmier', 'infirmier', 'examens'));
     }
 
-    /**
-     * Enregistrer une nouvelle consultation
-     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'id_patient' => 'required|exists:patients,id_patient',
-            'sexe' => 'nullable|in:M,F',
-            'date_naissance' => 'nullable|date|before:today',
-            'telephone' => 'nullable|string|max:20',
-            'motif' => 'required|string',
-            'symptomes' => 'required|string',
-            'diagnostic' => 'required|string',
+            'motif' => 'required|string|min:3',
+            'symptomes' => 'required|string|min:3',
+            'diagnostic' => 'required|string|min:3',
             'id_maladie' => 'nullable|exists:maladies,id_maladie',
             'prescription' => 'nullable|string',
             'observations_medecin' => 'nullable|string',
-            'tension_arterielle' => 'nullable|string|max:20',
-            'poids' => 'nullable|numeric|min:0|max:300',
-            'taille' => 'nullable|numeric|min:0|max:250',
-            'temperature' => 'nullable|numeric|min:30|max:45',
-            'frequence_cardiaque' => 'nullable|integer|min:30|max:200',
             'date_consultation' => 'nullable|date',
             'hospitalise' => 'nullable|boolean',
             'pavillon' => 'nullable|string|max:50',
@@ -109,6 +172,10 @@ class ConsultationController extends Controller
             'priorite' => 'nullable|in:normal,urgent,moyen',
             'examens' => 'nullable|array',
             'observations_cliniques' => 'nullable|string',
+            'type_echantillon' => 'nullable|string',
+            'autres_echantillon' => 'nullable|string',
+            'service_demandeur' => 'nullable|string',
+            'telephone_demandeur' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -117,104 +184,80 @@ class ConsultationController extends Controller
 
         DB::beginTransaction();
         try {
-            // Mettre à jour les informations du patient si fournies
-            $patient = Patient::find($request->id_patient);
-            if ($patient) {
-                $patientData = [];
-                if ($request->sexe) $patientData['sexe'] = $request->sexe;
-                if ($request->date_naissance) $patientData['date_naissance'] = $request->date_naissance;
-                if ($request->telephone) $patientData['telephone'] = $request->telephone;
-                if ($request->adresse_domicile) $patientData['adresse'] = $request->adresse_domicile;
-                
-                if (!empty($patientData)) {
-                    $patient->update($patientData);
-                }
+            // ✅ RÉCUPÉRER LE BILAN INFIRMIER
+            $bilanInfirmier = null;
+            try {
+                $bilanInfirmier = Bilan::where('id_patient', $request->id_patient)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            } catch (\Exception $e) {}
+            
+            if (!$bilanInfirmier) {
+                try {
+                    $bilanInfirmier = Bilan::whereHas('consultation', function($query) use ($request) {
+                            $query->where('id_patient', $request->id_patient);
+                        })
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                } catch (\Exception $e) {}
             }
 
             $consultation = Consultation::create([
-                'numero_consultacion' => $this->genererNumeroConsultation(),
+                'numero_consultation' => $this->genererNumeroConsultation(),
                 'date_consultation' => $request->date_consultation ?? today(),
                 'heure_consultation' => now(),
-                'motif' => $request->motif,
-                'symptomes' => $request->symptomes,
+                'motif' => $request->motif ?? ($bilanInfirmier->motif ?? null),
+                'symptomes' => $request->symptomes ?? ($bilanInfirmier->symptomes ?? null),
                 'diagnostic' => $request->diagnostic,
                 'prescription' => $request->prescription,
                 'observations_medecin' => $request->observations_medecin,
-                'tension_arterielle' => $request->tension_arterielle,
-                'poids' => $request->poids,
-                'taille' => $request->taille,
-                'temperature' => $request->temperature,
-                'frequence_cardiaque' => $request->frequence_cardiaque,
                 'id_patient' => $request->id_patient,
                 'medecin_id' => Auth::id(),
+                'id_infirmier' => $bilanInfirmier->id_infirmier ?? null,
                 'id_maladie' => $request->id_maladie,
-                'statut' => 'termine',
-                'hospitalise' => $request->hospitalise ?? false,
-                'pavillon' => $request->pavillon,
-                'chambre' => $request->chambre,
-                'lit' => $request->lit,
+                'statut' => 'en_cours',
+                'statut_consultation' => 'en_consultation',
+                'hospitalise' => $request->hospitalise ?? ($bilanInfirmier->hospitalise ?? false),
+                'pavillon' => $request->pavillon ?? ($bilanInfirmier->pavillon ?? null),
+                'chambre' => $request->chambre ?? ($bilanInfirmier->chambre ?? null),
+                'lit' => $request->lit ?? ($bilanInfirmier->lit ?? null),
                 'adresse_domicile' => $request->adresse_domicile,
                 'moyen' => $request->moyen,
                 'priorite' => $request->priorite ?? 'normal',
                 'observations_cliniques' => $request->observations_cliniques,
             ]);
 
-            // Calcul de l'IMC si taille et poids sont fournis
-            if ($request->taille && $request->poids) {
-                $tailleEnMetres = $request->taille / 100;
-                $imc = round($request->poids / ($tailleEnMetres * $tailleEnMetres), 2);
-                $consultation->imc = $imc;
-                $consultation->save();
-            }
-
-            // Si des examens sont demandés, créer un bon d'analyse
             if ($request->examens && is_array($request->examens)) {
-                $this->creerBonAnalyse($consultation, $request->examens);
+                $this->creerBonAnalyse($consultation, $request->examens, $request);
             }
 
             DB::commit();
 
             return redirect()->route('medecin.consultations.show', $consultation->id_consultation)
-                ->with('success', 'Consultation enregistrée avec succès ! Numéro: ' . $consultation->numero_consultacion);
+                ->with('success', 'Consultation enregistrée avec succès ! Numéro: ' . $consultation->numero_consultation);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Erreur lors de l\'enregistrement: ' . $e->getMessage())->withInput();
+            return back()->with('error', 'Erreur: ' . $e->getMessage())->withInput();
         }
     }
 
-    /**
-     * Afficher les détails d'une consultation
-     */
     public function show($id)
     {
-        $consultation = Consultation::with(['patient', 'medecin', 'maladie'])
+        $consultation = Consultation::with(['patient', 'medecin', 'infirmier', 'maladie', 'bilan', 'bonsAnalyse'])
             ->findOrFail($id);
         
         if ($consultation->medecin_id !== Auth::id() && !Auth::user()->estGestionnaire()) {
             abort(403);
         }
         
-        $examens = Examen::where('id_patient', $consultation->id_patient)
-            ->orderBy('date_examen', 'desc')
-            ->limit(5)
-            ->get();
-        
-        $consultationsPrecedentes = Consultation::where('id_patient', $consultation->id_patient)
-            ->where('id_consultation', '!=', $id)
-            ->orderBy('date_consultation', 'desc')
-            ->limit(5)
-            ->get();
-        
-        return view('medecin.consultations.show', compact('consultation', 'examens', 'consultationsPrecedentes'));
+        return view('medecin.consultations.show', compact('consultation'));
     }
 
-    /**
-     * Formulaire de modification d'une consultation
-     */
     public function edit($id)
     {
-        $consultation = Consultation::findOrFail($id);
+        $consultation = Consultation::with(['patient', 'infirmier', 'bilan'])
+            ->findOrFail($id);
         
         if ($consultation->medecin_id !== Auth::id()) {
             abort(403);
@@ -222,13 +265,12 @@ class ConsultationController extends Controller
         
         $patients = Patient::orderBy('nom')->get();
         $maladies = Maladie::orderBy('nom_maladie')->get();
+        $bilanInfirmier = $consultation->bilan;
+        $infirmier = $consultation->infirmier;
         
-        return view('medecin.consultations.edit', compact('consultation', 'patients', 'maladies'));
+        return view('medecin.consultations.edit', compact('consultation', 'patients', 'maladies', 'bilanInfirmier', 'infirmier'));
     }
 
-    /**
-     * Mettre à jour une consultation
-     */
     public function update(Request $request, $id)
     {
         $consultation = Consultation::findOrFail($id);
@@ -238,18 +280,13 @@ class ConsultationController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'motif' => 'required|string',
-            'symptomes' => 'required|string',
-            'diagnostic' => 'required|string',
+            'motif' => 'required|string|min:3',
+            'symptomes' => 'required|string|min:3',
+            'diagnostic' => 'required|string|min:3',
             'id_maladie' => 'nullable|exists:maladies,id_maladie',
             'prescription' => 'nullable|string',
             'observations_medecin' => 'nullable|string',
-            'tension_arterielle' => 'nullable|string|max:20',
-            'poids' => 'nullable|numeric|min:0|max:300',
-            'taille' => 'nullable|numeric|min:0|max:250',
-            'temperature' => 'nullable|numeric|min:30|max:45',
-            'frequence_cardiaque' => 'nullable|integer|min:30|max:200',
-            'statut' => 'nullable|in:en_cours,termine,annule',
+            'statut_consultation' => 'nullable|in:en_attente_infirmier,bilan_fait,en_consultation,termine,annule',
             'hospitalise' => 'nullable|boolean',
             'pavillon' => 'nullable|string|max:50',
             'chambre' => 'nullable|string|max:50',
@@ -264,21 +301,11 @@ class ConsultationController extends Controller
         }
 
         $consultation->update($request->all());
-        
-        if ($request->taille && $request->poids) {
-            $tailleEnMetres = $request->taille / 100;
-            $imc = round($request->poids / ($tailleEnMetres * $tailleEnMetres), 2);
-            $consultation->imc = $imc;
-            $consultation->save();
-        }
 
         return redirect()->route('medecin.consultations.show', $consultation->id_consultation)
             ->with('success', 'Consultation modifiée avec succès');
     }
 
-    /**
-     * Supprimer une consultation
-     */
     public function destroy($id)
     {
         $consultation = Consultation::findOrFail($id);
@@ -287,78 +314,54 @@ class ConsultationController extends Controller
             abort(403);
         }
         
+        if ($consultation->statut_consultation === 'termine') {
+            return back()->with('error', 'Impossible de supprimer une consultation terminée.');
+        }
+        
         $consultation->delete();
 
         return redirect()->route('medecin.consultations.index')
             ->with('success', 'Consultation supprimée avec succès');
     }
 
-    /**
-     * Imprimer une consultation
-     */
     public function imprimer($id)
     {
-        $consultation = Consultation::with(['patient', 'medecin', 'maladie'])
+        $consultation = Consultation::with(['patient', 'medecin', 'infirmier', 'maladie', 'bilan'])
             ->findOrFail($id);
+        
+        if ($consultation->medecin_id !== Auth::id()) {
+            abort(403);
+        }
         
         return view('medecin.consultations.print', compact('consultation'));
     }
 
-    /**
-     * Ordonner des examens pour une consultation
-     */
-    public function ordonnerExamens(Request $request, $id)
+    private function creerBonAnalyse($consultation, $examens, $request)
     {
-        $consultation = Consultation::findOrFail($id);
-        
-        $validator = Validator::make($request->all(), [
-            'examens' => 'required|array|min:1',
-            'examens.*.type' => 'required|string',
-            'examens.*.date' => 'required|date',
-        ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        DB::beginTransaction();
+        $bilanInfirmier = null;
         try {
-            foreach ($request->examens as $examenData) {
-                Examen::create([
-                    'numero_examen' => $this->genererNumeroExamen(),
-                    'type_examen' => $examenData['type'],
-                    'date_examen' => $examenData['date'],
-                    'heure_examen' => '08:00:00',
-                    'id_patient' => $consultation->id_patient,
-                    'consultation_id' => $consultation->id_consultation,
-                    'id_maladie' => $consultation->id_maladie,
-                    'laborantin_id' => null,
-                    'medecin_id' => Auth::id(),
-                    'statut' => 'en_attente',
-                    'commentaires' => 'Prescrit par Dr. ' . (Auth::user()->nom_complet ?? Auth::user()->name),
-                ]);
-            }
-            
-            DB::commit();
-            
-            return redirect()->route('medecin.consultations.show', $consultation->id_consultation)
-                ->with('success', count($request->examens) . ' examen(s) prescrit(s) avec succès');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Erreur lors de la prescription: ' . $e->getMessage());
+            $bilanInfirmier = Bilan::where('id_patient', $consultation->id_patient)
+                ->orderBy('created_at', 'desc')
+                ->first();
+        } catch (\Exception $e) {}
+        
+        if (!$bilanInfirmier) {
+            try {
+                $bilanInfirmier = Bilan::whereHas('consultation', function($query) use ($consultation) {
+                        $query->where('id_patient', $consultation->id_patient);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            } catch (\Exception $e) {}
         }
-    }
 
-    /**
-     * Créer un bon d'analyse à partir des examens demandés
-     */
-    private function creerBonAnalyse($consultation, $examens)
-    {
-        $bon = \App\Models\BonAnalyse::create([
-            'numero_bon' => \App\Models\BonAnalyse::generateNumeroBon(),
+        $bon = BonAnalyse::create([
+            'numero_bon' => BonAnalyse::generateNumeroBon(),
             'id_patient' => $consultation->id_patient,
+            'id_consultation' => $consultation->id_consultation,
             'medecin_id' => Auth::id(),
+            'id_infirmier' => $bilanInfirmier->id_infirmier ?? null,
+            'bilan_infirmier_id' => $bilanInfirmier->id_bilan ?? null,
             'hospitalise' => $consultation->hospitalise ?? false,
             'pavillon' => $consultation->pavillon,
             'chambre' => $consultation->chambre,
@@ -368,16 +371,29 @@ class ConsultationController extends Controller
             'prenom_medecin_demandeur' => Auth::user()->prenom,
             'date_demande' => now(),
             'heure_demande' => now()->format('H:i'),
-            'service_demandeur' => Auth::user()->specialite ?? 'Médecine Générale',
-            'telephone_demandeur' => Auth::user()->telephone ?? 'N/A',
+            'service_demandeur' => $request->service_demandeur ?? Auth::user()->specialite ?? 'Médecine Générale',
+            'telephone_demandeur' => $request->telephone_demandeur ?? Auth::user()->telephone ?? 'N/A',
+            'type_echantillon' => $request->type_echantillon,
+            'autres_echantillon' => $request->autres_echantillon,
             'examens' => $examens,
             'priorite' => $consultation->priorite ?? 'normal',
             'statut' => 'en_attente',
-            'observations_cliniques' => $consultation->observations_cliniques,
+            'observations_cliniques' => $request->observations_cliniques ?? $consultation->observations_medecin,
+            'motif_infirmier' => $bilanInfirmier->motif ?? null,
+            'symptomes_infirmier' => $bilanInfirmier->symptomes ?? null,
+            'observations_infirmier' => $bilanInfirmier->observations ?? null,
+            'allergies_infirmier' => $bilanInfirmier->allergies ?? null,
+            'traitements_infirmier' => $bilanInfirmier->traitements_en_cours ?? null,
+            'poids_infirmier' => $bilanInfirmier->poids ?? null,
+            'taille_infirmier' => $bilanInfirmier->taille ?? null,
+            'temperature_infirmier' => $bilanInfirmier->temperature ?? null,
+            'tension_arterielle_infirmier' => $bilanInfirmier->tension_arterielle ?? null,
+            'frequence_cardiaque_infirmier' => $bilanInfirmier->frequence_cardiaque ?? null,
+            'frequence_respiratoire_infirmier' => $bilanInfirmier->frequence_respiratoire ?? null,
+            'spo2_infirmier' => $bilanInfirmier->spo2 ?? null,
         ]);
 
-        // Notifier les laborantins
-        $laborantins = \App\Models\User::where('role_id', 4)->where('est_actif', true)->get();
+        $laborantins = User::where('role_id', 4)->where('est_actif', true)->get();
         foreach ($laborantins as $laborantin) {
             Notification::create([
                 'titre' => '📋 Nouveau bon d\'analyse',
@@ -392,9 +408,6 @@ class ConsultationController extends Controller
         return $bon;
     }
 
-    /**
-     * Générer un numéro de consultation unique
-     */
     private function genererNumeroConsultation()
     {
         $prefix = 'CONS';
@@ -405,8 +418,8 @@ class ConsultationController extends Controller
             ->orderBy('id_consultation', 'desc')
             ->first();
         
-        if ($lastConsultation && $lastConsultation->numero_consultacion) {
-            $lastNumber = intval(substr($lastConsultation->numero_consultacion, -4));
+        if ($lastConsultation && $lastConsultation->numero_consultation) {
+            $lastNumber = intval(substr($lastConsultation->numero_consultation, -4));
             $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
         } else {
             $newNumber = '0001';
@@ -415,25 +428,21 @@ class ConsultationController extends Controller
         return $prefix . '-' . $year . $month . '-' . $newNumber;
     }
 
-    /**
-     * Générer un numéro d'examen unique
-     */
-    private function genererNumeroExamen()
+    public function statistiques()
     {
-        $year = date('Y');
-        $month = date('m');
+        $stats = [
+            'total' => Consultation::where('medecin_id', Auth::id())->count(),
+            'aujourdhui' => Consultation::where('medecin_id', Auth::id())->whereDate('date_consultation', today())->count(),
+            'cette_semaine' => Consultation::where('medecin_id', Auth::id())->whereBetween('date_consultation', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count(),
+            'ce_mois' => Consultation::where('medecin_id', Auth::id())->whereMonth('date_consultation', now()->month)->count(),
+            'en_attente' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'en_attente_infirmier')->count(),
+            'en_cours' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'en_consultation')->count(),
+            'termines' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'termine')->count(),
+            'annules' => Consultation::where('medecin_id', Auth::id())->where('statut_consultation', 'annule')->count(),
+            'avec_bilan' => Consultation::where('medecin_id', Auth::id())->whereNotNull('id_infirmier')->count(),
+            'sans_bilan' => Consultation::where('medecin_id', Auth::id())->whereNull('id_infirmier')->count(),
+        ];
         
-        $lastExamen = Examen::whereYear('created_at', $year)
-            ->orderBy('id_examen', 'desc')
-            ->first();
-        
-        if ($lastExamen && $lastExamen->numero_examen) {
-            $lastNumber = intval(substr($lastExamen->numero_examen, -4));
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
-        }
-        
-        return 'EXAM-' . $year . $month . '-' . $newNumber;
+        return view('medecin.consultations.statistiques', compact('stats'));
     }
 }

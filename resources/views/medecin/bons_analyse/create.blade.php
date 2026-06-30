@@ -1,33 +1,33 @@
 @extends('layouts.medecin')
 
-@section('title', 'Nouveau bon d\'analyse')
+@section('title', 'Nouvelle consultation')
 
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
-        <div>
+        <div data-aos="fade-right">
             <h1 class="h2 mb-1">
-                <i class="fas fa-flask me-2" style="color: #1a4d6b;"></i>
-                Bon de demande d'analyse
+                <i class="fas fa-plus-circle me-2" style="color: #1a4d6b;"></i>
+                Nouvelle consultation
             </h1>
-            <p class="text-muted mb-0">Formulaire de prescription d'examens de laboratoire</p>
+            <p class="text-muted mb-0">Enregistrer une consultation médicale avec bon d'analyse</p>
         </div>
-        <div>
-            <a href="{{ route('medecin.bons-analyse.index') }}" class="btn btn-outline-secondary">
+        <div data-aos="fade-left">
+            <a href="{{ route('medecin.consultations.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-2"></i> Retour
             </a>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-12">
+        <div class="col-12" data-aos="fade-up">
             <div class="card">
                 <div class="card-header">
-                    <i class="fas fa-file-medical me-2"></i> Bon de demande d'analyse
+                    <i class="fas fa-file-medical me-2"></i> Consultation et Bon de demande d'analyse
                     <span class="badge bg-info ms-2">LS-FLT-001</span>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('medecin.bons-analyse.store') }}" id="bonForm">
+                    <form method="POST" action="{{ route('medecin.consultations.store') }}" id="consultationForm">
                         @csrf
 
                         <!-- ========================================== -->
@@ -39,8 +39,8 @@
 
                         <div class="row">
                             <div class="col-md-12 mb-3">
-                                <label class="form-label fw-bold">Patient</label>
-                                <select name="id_patient" id="patientSelect" class="form-select select2" required>
+                                <label class="form-label fw-bold">Patient <span class="text-danger">*</span></label>
+                                <select name="id_patient" id="patient_select" class="form-select select2 @error('id_patient') is-invalid @enderror" required>
                                     <option value="">-- Sélectionnez un patient --</option>
                                     @foreach($patients as $patient)
                                         <option value="{{ $patient->id_patient }}" 
@@ -51,62 +51,144 @@
                                             data-date_naissance="{{ $patient->date_naissance }}"
                                             data-telephone="{{ $patient->telephone }}"
                                             data-adresse="{{ $patient->adresse }}"
-                                            {{ $selectedPatient && $selectedPatient->id_patient == $patient->id_patient ? 'selected' : '' }}>
+                                            {{ old('id_patient', $selectedPatient->id_patient ?? '') == $patient->id_patient ? 'selected' : '' }}>
                                             {{ $patient->nom_complet }} - {{ $patient->numero_fiche }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('id_patient') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
 
-                        <!-- Infos patient automatiques -->
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label class="form-label">Nom, Post-nom et Prénom</label>
-                                <input type="text" id="patientNom" class="form-control" readonly placeholder="-- Patient non sélectionné --">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Sexe</label>
-                                <input type="text" id="patientSexe" class="form-control" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Date de naissance</label>
-                                <input type="text" id="patientDateNaissance" class="form-control" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Téléphone</label>
-                                <input type="text" id="patientTelephone" class="form-control" readonly>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3">
-                            <div class="col-md-3">
-                                <label class="form-label">Hospitalisé(e)</label>
-                                <div class="form-check form-switch mt-2">
-                                    <input type="checkbox" name="hospitalise" id="hospitalise" class="form-check-input" value="1">
-                                    <label class="form-check-label" for="hospitalise">Oui</label>
+                        <!-- ⭐ BILAN INFIRMIER - AFFICHAGE AUTOMATIQUE ⭐ -->
+                        @if(isset($bilanInfirmier) && $bilanInfirmier)
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas fa-user-nurse me-2"></i> 
+                                                Bilan initial effectué par l'infirmier
+                                            </div>
+                                            <div>
+                                                <span class="badge bg-light text-dark me-2">
+                                                    <i class="fas fa-user me-1"></i> 
+                                                    @if(isset($infirmier) && $infirmier)
+                                                        {{ $infirmier->nom_complet }}
+                                                    @elseif($bilanInfirmier->infirmier)
+                                                        {{ $bilanInfirmier->infirmier->nom_complet }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </span>
+                                                <span class="badge bg-light text-dark">
+                                                    <i class="fas fa-clock me-1"></i> {{ $bilanInfirmier->created_at->format('d/m/Y H:i') }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">Poids</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->poids ?? 'N/A' }} kg</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">Taille</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->taille ?? 'N/A' }} cm</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">Température</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->temperature ?? 'N/A' }} °C</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">Tension artérielle</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->tension_arterielle ?? 'N/A' }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">Fréquence cardiaque</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->frequence_cardiaque ?? 'N/A' }} bpm</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">Fréquence respiratoire</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->frequence_respiratoire ?? 'N/A' }}/min</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-item">
+                                                    <label class="text-muted small">SpO2</label>
+                                                    <p class="fw-bold">{{ $bilanInfirmier->spo2 ?? 'N/A' }} %</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        @if($bilanInfirmier->motif || $bilanInfirmier->symptomes || $bilanInfirmier->observations)
+                                        <hr>
+                                        <div class="row">
+                                            @if($bilanInfirmier->motif)
+                                            <div class="col-md-4">
+                                                <label class="text-muted small">Motif</label>
+                                                <p class="fw-bold">{{ $bilanInfirmier->motif }}</p>
+                                            </div>
+                                            @endif
+                                            @if($bilanInfirmier->symptomes)
+                                            <div class="col-md-4">
+                                                <label class="text-muted small">Symptômes</label>
+                                                <p class="fw-bold">{{ $bilanInfirmier->symptomes }}</p>
+                                            </div>
+                                            @endif
+                                            @if($bilanInfirmier->observations)
+                                            <div class="col-md-4">
+                                                <label class="text-muted small">Observations</label>
+                                                <p class="fw-bold">{{ $bilanInfirmier->observations }}</p>
+                                            </div>
+                                            @endif
+                                        </div>
+                                        @endif
+                                        
+                                        @if($bilanInfirmier->allergies || $bilanInfirmier->traitements_en_cours)
+                                        <hr>
+                                        <div class="row">
+                                            @if($bilanInfirmier->allergies)
+                                            <div class="col-md-6">
+                                                <label class="text-muted small text-danger">⚠️ Allergies</label>
+                                                <p class="fw-bold text-danger">{{ $bilanInfirmier->allergies }}</p>
+                                            </div>
+                                            @endif
+                                            @if($bilanInfirmier->traitements_en_cours)
+                                            <div class="col-md-6">
+                                                <label class="text-muted small">Traitements en cours</label>
+                                                <p class="fw-bold">{{ $bilanInfirmier->traitements_en_cours }}</p>
+                                            </div>
+                                            @endif
+                                        </div>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-3" id="pavillonGroup" style="display:none;">
-                                <label class="form-label">Pavillon N°</label>
-                                <input type="text" name="pavillon" class="form-control" placeholder="N° Pavillon">
-                            </div>
-                            <div class="col-md-3" id="chambreGroup" style="display:none;">
-                                <label class="form-label">Chambre N°</label>
-                                <input type="text" name="chambre" class="form-control" placeholder="N° Chambre">
-                            </div>
-                            <div class="col-md-3" id="litGroup" style="display:none;">
-                                <label class="form-label">Lit N°</label>
-                                <input type="text" name="lit" class="form-control" placeholder="N° Lit">
+                        </div>
+                        @elseif(isset($selectedPatient) && $selectedPatient)
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Aucun bilan infirmier trouvé</strong> pour ce patient.
+                                </div>
                             </div>
                         </div>
-
-                        <div class="row mt-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Adresse du domicile</label>
-                                <input type="text" name="adresse_domicile" id="patientAdresse" class="form-control" placeholder="Adresse du patient">
-                            </div>
-                        </div>
+                        @endif
 
                         <!-- ========================================== -->
                         <!-- 2. MÉDECIN/CLINICIEN DEMANDEUR               -->
@@ -116,25 +198,25 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Nom et prénom</label>
                                 <input type="text" class="form-control" value="Dr. {{ Auth::user()->nom_complet }}" readonly>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-3">
                                 <label class="form-label">Date</label>
-                                <input type="date" name="date_demande" class="form-control" value="{{ date('Y-m-d') }}" required>
+                                <input type="date" name="date_demande" class="form-control" value="{{ old('date_demande', date('Y-m-d')) }}">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-3">
                                 <label class="form-label">Heure</label>
-                                <input type="time" name="heure_demande" class="form-control" value="{{ date('H:i') }}" required>
+                                <input type="time" name="heure_demande" class="form-control" value="{{ old('heure_demande', date('H:i')) }}">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Service</label>
-                                <input type="text" name="service_demandeur" class="form-control" placeholder="Médecine Générale" required>
+                                <input type="text" name="service_demandeur" class="form-control" placeholder="Médecine Générale" value="{{ old('service_demandeur', Auth::user()->specialite ?? 'Médecine Générale') }}">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-3">
                                 <label class="form-label">Téléphone</label>
-                                <input type="text" name="telephone_demandeur" class="form-control" placeholder="Téléphone" required>
+                                <input type="text" name="telephone_demandeur" class="form-control" placeholder="Téléphone" value="{{ old('telephone_demandeur', Auth::user()->telephone ?? '') }}">
                             </div>
                         </div>
 
@@ -147,23 +229,23 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Nom</label>
                                 <input type="text" class="form-control" placeholder="À remplir par le labo" readonly style="background:#f8f9fa;">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Prénom</label>
                                 <input type="text" class="form-control" placeholder="À remplir par le labo" readonly style="background:#f8f9fa;">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-3">
                                 <label class="form-label">Date prélèvement</label>
                                 <input type="text" class="form-control" placeholder="--/--/----" readonly style="background:#f8f9fa;">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-3">
                                 <label class="form-label">Heure</label>
                                 <input type="text" class="form-control" placeholder="--:--" readonly style="background:#f8f9fa;">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-3">
                                 <label class="form-label">N° Id. Client/labo</label>
                                 <input type="text" class="form-control" placeholder="À remplir" readonly style="background:#f8f9fa;">
                             </div>
@@ -177,30 +259,30 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-12">
+                            <div class="col-md-12 mb-3">
                                 <div class="d-flex flex-wrap gap-4">
                                     <div class="form-check">
-                                        <input type="radio" name="type_echantillon" id="sang" value="sang" class="form-check-input">
+                                        <input type="radio" name="type_echantillon" id="sang" value="sang" class="form-check-input" {{ old('type_echantillon') == 'sang' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="sang">Sang</label>
                                     </div>
                                     <div class="form-check">
-                                        <input type="radio" name="type_echantillon" id="selles" value="selles" class="form-check-input">
+                                        <input type="radio" name="type_echantillon" id="selles" value="selles" class="form-check-input" {{ old('type_echantillon') == 'selles' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="selles">Selles</label>
                                     </div>
                                     <div class="form-check">
-                                        <input type="radio" name="type_echantillon" id="urines" value="urines" class="form-check-input">
+                                        <input type="radio" name="type_echantillon" id="urines" value="urines" class="form-check-input" {{ old('type_echantillon') == 'urines' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="urines">Urines</label>
                                     </div>
                                     <div class="form-check">
-                                        <input type="radio" name="type_echantillon" id="lcr" value="lcr" class="form-check-input">
+                                        <input type="radio" name="type_echantillon" id="lcr" value="lcr" class="form-check-input" {{ old('type_echantillon') == 'lcr' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="lcr">LCR</label>
                                     </div>
                                     <div class="form-check">
-                                        <input type="radio" name="type_echantillon" id="crachat" value="crachat" class="form-check-input">
+                                        <input type="radio" name="type_echantillon" id="crachat" value="crachat" class="form-check-input" {{ old('type_echantillon') == 'crachat' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="crachat">Crachat</label>
                                     </div>
                                     <div class="form-check">
-                                        <input type="radio" name="type_echantillon" id="autres" value="autres" class="form-check-input">
+                                        <input type="radio" name="type_echantillon" id="autres" value="autres" class="form-check-input" {{ old('type_echantillon') == 'autres' ? 'checked' : '' }}>
                                         <label class="form-check-label" for="autres">Autres</label>
                                     </div>
                                 </div>
@@ -208,7 +290,7 @@
                         </div>
                         <div class="row mt-2">
                             <div class="col-md-4">
-                                <input type="text" name="autres_echantillon" class="form-control" placeholder="Précisez si autres...">
+                                <input type="text" name="autres_echantillon" class="form-control" placeholder="Précisez si autres..." value="{{ old('autres_echantillon') }}">
                             </div>
                         </div>
 
@@ -220,164 +302,164 @@
                         </div>
 
                         <div class="row">
-                            <!-- Parasitologie -->
+                            @foreach($examens as $categorie => $items)
                             <div class="col-md-6 mb-3">
                                 <div class="card">
                                     <div class="card-header bg-light">
-                                        <h6 class="mb-0">🦠 Parasitologie</h6>
+                                        <h6 class="mb-0">
+                                            @if($categorie == 'parasitologie') 🦠
+                                            @elseif($categorie == 'hematologie') 🩸
+                                            @elseif($categorie == 'microbiologie') 🧫
+                                            @elseif($categorie == 'biochimie') 🧪
+                                            @elseif($categorie == 'immuno_serologie') 🧬
+                                            @endif
+                                            {{ ucfirst(str_replace('_', ' ', $categorie)) }}
+                                        </h6>
                                     </div>
                                     <div class="card-body">
-                                        @foreach($examens['parasitologie'] as $key => $label)
+                                        @foreach($items as $key => $label)
                                         <div class="form-check">
-                                            <input type="checkbox" name="examens[parasitologie][{{ $key }}]" 
-                                                   value="1" id="para_{{ $key }}" class="form-check-input">
-                                            <label class="form-check-label" for="para_{{ $key }}">{{ $label }}</label>
+                                            <input type="checkbox" name="examens[{{ $categorie }}][{{ $key }}]" 
+                                                   value="1" id="{{ $categorie }}_{{ $key }}" class="form-check-input" {{ old('examens.'.$categorie.'.'.$key) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="{{ $categorie }}_{{ $key }}">{{ $label }}</label>
                                         </div>
                                         @endforeach
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Hématologie -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">🩸 Hématologie</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        @foreach($examens['hematologie'] as $key => $label)
-                                        <div class="form-check">
-                                            <input type="checkbox" name="examens[hematologie][{{ $key }}]" 
-                                                   value="1" id="hemato_{{ $key }}" class="form-check-input">
-                                            <label class="form-check-label" for="hemato_{{ $key }}">{{ $label }}</label>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Microbiologie -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">🧫 Microbiologie</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        @foreach($examens['microbiologie'] as $key => $label)
-                                        <div class="form-check">
-                                            <input type="checkbox" name="examens[microbiologie][{{ $key }}]" 
-                                                   value="1" id="micro_{{ $key }}" class="form-check-input">
-                                            <label class="form-check-label" for="micro_{{ $key }}">{{ $label }}</label>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Biochimie -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">🧪 Biochimie</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        @foreach($examens['biochimie'] as $key => $label)
-                                        <div class="form-check">
-                                            <input type="checkbox" name="examens[biochimie][{{ $key }}]" 
-                                                   value="1" id="bio_{{ $key }}" class="form-check-input">
-                                            <label class="form-check-label" for="bio_{{ $key }}">{{ $label }}</label>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Immuno-sérologie -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">🧬 Immuno-sérologie</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        @foreach($examens['immuno_serologie'] as $key => $label)
-                                        <div class="form-check">
-                                            <input type="checkbox" name="examens[immuno_serologie][{{ $key }}]" 
-                                                   value="1" id="immuno_{{ $key }}" class="form-check-input">
-                                            <label class="form-check-label" for="immuno_{{ $key }}">{{ $label }}</label>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Autres -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0">📋 Autres analyses</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="mb-2">
-                                            <input type="text" name="examens[autres][0]" class="form-control mb-2" placeholder="Autre analyse 1">
-                                            <input type="text" name="examens[autres][1]" class="form-control mb-2" placeholder="Autre analyse 2">
-                                            <input type="text" name="examens[autres][2]" class="form-control" placeholder="Autre analyse 3">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            @endforeach
                         </div>
 
                         <!-- ========================================== -->
-                        <!-- 6. PRIORITÉ                                 -->
+                        <!-- 6. CONSULTATION - CHAMPS MÉDECIN            -->
                         <!-- ========================================== -->
                         <div class="section-title mt-4">
-                            <i class="fas fa-flag me-2"></i> Priorité
+                            <i class="fas fa-stethoscope me-2"></i> Détails de la consultation (Médecin)
                         </div>
 
                         <div class="row">
-                            <div class="col-md-12">
-                                <div class="d-flex gap-4">
-                                    <div class="form-check">
-                                        <input type="radio" name="priorite" id="normal" value="normal" checked class="form-check-input">
-                                        <label class="form-check-label" for="normal">
-                                            <span class="badge bg-primary">Normal</span>
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input type="radio" name="priorite" id="urgent" value="urgent" class="form-check-input">
-                                        <label class="form-check-label" for="urgent">
-                                            <span class="badge bg-danger">Urgent</span>
-                                        </label>
-                                    </div>
-                                </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Motif de la consultation <span class="text-danger">*</span></label>
+                                <textarea name="motif" rows="2" class="form-control @error('motif') is-invalid @enderror" 
+                                          placeholder="Raison de la consultation..." required
+                                          @if(isset($bilanInfirmier) && $bilanInfirmier && $bilanInfirmier->motif) readonly style="background:#f8f9fa;" @endif>{{ old('motif', $bilanInfirmier->motif ?? '') }}</textarea>
+                                @error('motif') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Symptômes <span class="text-danger">*</span></label>
+                                <textarea name="symptomes" rows="3" class="form-control @error('symptomes') is-invalid @enderror" 
+                                          placeholder="Liste des symptômes..." required
+                                          @if(isset($bilanInfirmier) && $bilanInfirmier && $bilanInfirmier->symptomes) readonly style="background:#f8f9fa;" @endif>{{ old('symptomes', $bilanInfirmier->symptomes ?? '') }}</textarea>
+                                @error('symptomes') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Diagnostic <span class="text-danger">*</span></label>
+                                <textarea name="diagnostic" rows="3" class="form-control @error('diagnostic') is-invalid @enderror" 
+                                          placeholder="Diagnostic médical..." required>{{ old('diagnostic') }}</textarea>
+                                @error('diagnostic') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Prescription</label>
+                                <textarea name="prescription" rows="3" class="form-control" 
+                                          placeholder="Médicaments, posologie, durée...">{{ old('prescription') }}</textarea>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Observations du médecin</label>
+                                <textarea name="observations_medecin" rows="3" class="form-control" 
+                                          placeholder="Notes et observations supplémentaires...">{{ old('observations_medecin') }}</textarea>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Date consultation</label>
+                                <input type="date" name="date_consultation" class="form-control @error('date_consultation') is-invalid @enderror" 
+                                       value="{{ old('date_consultation', date('Y-m-d')) }}">
+                                @error('date_consultation') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Maladie</label>
+                                <select name="id_maladie" class="form-select select2">
+                                    <option value="">Non spécifiée</option>
+                                    @foreach($maladies as $maladie)
+                                        <option value="{{ $maladie->id_maladie }}" {{ old('id_maladie') == $maladie->id_maladie ? 'selected' : '' }}>
+                                            {{ $maladie->nom_maladie }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Moyen</label>
+                                <select name="moyen" class="form-select">
+                                    <option value="">-- Sélectionnez --</option>
+                                    <option value="Consultation" {{ old('moyen') == 'Consultation' ? 'selected' : '' }}>Consultation</option>
+                                    <option value="Urgence" {{ old('moyen') == 'Urgence' ? 'selected' : '' }}>Urgence</option>
+                                    <option value="Référence" {{ old('moyen') == 'Référence' ? 'selected' : '' }}>Référence</option>
+                                    <option value="Suivi" {{ old('moyen') == 'Suivi' ? 'selected' : '' }}>Suivi</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Priorité</label>
+                                <select name="priorite" class="form-select">
+                                    <option value="normal" {{ old('priorite', 'normal') == 'normal' ? 'selected' : '' }}>Normal</option>
+                                    <option value="moyen" {{ old('priorite') == 'moyen' ? 'selected' : '' }}>Moyen</option>
+                                    <option value="urgent" {{ old('priorite') == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                                </select>
                             </div>
                         </div>
 
                         <!-- ========================================== -->
-                        <!-- 7. INFORMATIONS CLINIQUES                  -->
+                        <!-- 7. HOSPITALISATION                         -->
                         <!-- ========================================== -->
                         <div class="section-title mt-4">
-                            <i class="fas fa-notes-medical me-2"></i> Informations cliniques
+                            <i class="fas fa-hospital me-2"></i> Hospitalisation
                         </div>
 
                         <div class="row">
-                            <div class="col-md-12">
-                                <textarea name="observations_cliniques" class="form-control" rows="3" 
-                                          placeholder="Observations cliniques pertinentes..."></textarea>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Hospitalisé(e)</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input type="checkbox" name="hospitalise" id="hospitalise" class="form-check-input" value="1" {{ old('hospitalise', $bilanInfirmier->hospitalise ?? false) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="hospitalise">Oui</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3" id="pavillonGroup" style="{{ old('hospitalise', $bilanInfirmier->hospitalise ?? false) ? 'display:block;' : 'display:none;' }}">
+                                <label class="form-label">Pavillon <span class="text-danger">*</span></label>
+                                <input type="text" name="pavillon" class="form-control" placeholder="N° Pavillon" value="{{ old('pavillon', $bilanInfirmier->pavillon ?? '') }}" {{ old('hospitalise', $bilanInfirmier->hospitalise ?? false) ? 'required' : '' }}>
+                            </div>
+                            <div class="col-md-3" id="chambreGroup" style="{{ old('hospitalise', $bilanInfirmier->hospitalise ?? false) ? 'display:block;' : 'display:none;' }}">
+                                <label class="form-label">Chambre <span class="text-danger">*</span></label>
+                                <input type="text" name="chambre" class="form-control" placeholder="N° Chambre" value="{{ old('chambre', $bilanInfirmier->chambre ?? '') }}" {{ old('hospitalise', $bilanInfirmier->hospitalise ?? false) ? 'required' : '' }}>
+                            </div>
+                            <div class="col-md-3" id="litGroup" style="{{ old('hospitalise', $bilanInfirmier->hospitalise ?? false) ? 'display:block;' : 'display:none;' }}">
+                                <label class="form-label">Lit</label>
+                                <input type="text" name="lit" class="form-control" placeholder="N° Lit" value="{{ old('lit', $bilanInfirmier->lit ?? '') }}">
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Adresse du domicile</label>
+                                <input type="text" name="adresse_domicile" id="patient_adresse" class="form-control" placeholder="Adresse du patient" value="{{ old('adresse_domicile', $selectedPatient->adresse ?? '') }}">
                             </div>
                         </div>
 
                         <!-- ========================================== -->
-                        <!-- 8. ACTIONS                                 -->
+                        <!-- 8. ACTIONS                                -->
                         <!-- ========================================== -->
                         <div class="row mt-4">
                             <div class="col-md-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Un numéro de consultation et un bon d'analyse seront générés automatiquement.
+                                    @if(isset($bilanInfirmier) && $bilanInfirmier)
+                                    <br><i class="fas fa-check-circle text-success me-1"></i> 
+                                    <strong>Bilan infirmier intégré automatiquement.</strong>
+                                    @endif
+                                </div>
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="reset" class="btn btn-outline-secondary">
                                         <i class="fas fa-undo me-2"></i> Réinitialiser
                                     </button>
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-paper-plane me-2"></i> Envoyer au laboratoire
+                                        <i class="fas fa-save me-2"></i> Enregistrer la consultation
                                     </button>
                                 </div>
                             </div>
@@ -393,43 +475,38 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Initialisation Select2
         $('.select2').select2({
             theme: 'bootstrap5',
             width: '100%'
         });
 
-        // Afficher les infos du patient sélectionné
-        $('#patientSelect').on('change', function() {
-            var option = $(this).find('option:selected');
-            var nom = option.data('nom') || '';
-            var postnom = option.data('postnom') || '';
-            var prenom = option.data('prenom') || '';
-            var sexe = option.data('sexe') || '';
-            var dateNaiss = option.data('date_naissance') || '';
-            var telephone = option.data('telephone') || '';
-            var adresse = option.data('adresse') || '';
-
-            $('#patientNom').val(prenom + ' ' + nom + ' ' + postnom);
-            $('#patientSexe').val(sexe == 'M' ? 'Masculin' : (sexe == 'F' ? 'Féminin' : ''));
-            $('#patientDateNaissance').val(dateNaiss);
-            $('#patientTelephone').val(telephone);
-            $('#patientAdresse').val(adresse);
-        });
-
-        // Afficher/masquer les champs d'hospitalisation
         $('#hospitalise').on('change', function() {
             if ($(this).is(':checked')) {
-                $('#pavillonGroup, #chambreGroup, #litGroup').show();
+                $('#pavillonGroup').show(300);
+                $('#chambreGroup').show(300);
+                $('#litGroup').show(300);
+                $('#pavillonGroup input, #chambreGroup input').prop('required', true);
             } else {
-                $('#pavillonGroup, #chambreGroup, #litGroup').hide();
+                $('#pavillonGroup').hide(300);
+                $('#chambreGroup').hide(300);
+                $('#litGroup').hide(300);
+                $('#pavillonGroup input, #chambreGroup input').prop('required', false);
             }
         });
 
-        // Déclencher l'événement si un patient est pré-sélectionné
-        if ($('#patientSelect').val()) {
-            $('#patientSelect').trigger('change');
+        if ($('#hospitalise').is(':checked')) {
+            $('#pavillonGroup').show();
+            $('#chambreGroup').show();
+            $('#litGroup').show();
+            $('#pavillonGroup input, #chambreGroup input').prop('required', true);
         }
+
+        $('#patient_select').on('change', function() {
+            var patientId = $(this).val();
+            if (patientId) {
+                window.location.href = "{{ route('medecin.consultations.create') }}?patientId=" + patientId;
+            }
+        });
     });
 </script>
 @endpush
@@ -451,9 +528,32 @@
     .form-check-input {
         cursor: pointer;
     }
-    .card-header h6 {
+    #pavillonGroup, #chambreGroup, #litGroup {
+        transition: all 0.3s ease;
+        display: none;
+    }
+    .info-item {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+    }
+    .info-item label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+    .info-item p {
         margin-bottom: 0;
-        color: #1a4d6b;
+        font-size: 14px;
+    }
+    textarea[readonly], input[readonly] {
+        background: #f8f9fa !important;
+        cursor: default;
+    }
+    .card.border-success {
+        border-color: #28a745 !important;
     }
 </style>
 @endpush

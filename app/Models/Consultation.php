@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class Consultation extends Model
@@ -31,10 +30,22 @@ class Consultation extends Model
         'imc',
         'temperature',
         'frequence_cardiaque',
+        'frequence_respiratoire',
+        'spo2',
         'id_patient',
         'medecin_id',
+        'id_infirmier',
         'id_maladie',
-        'statut'
+        'statut',
+        'statut_consultation',
+        'hospitalise',
+        'pavillon',
+        'chambre',
+        'lit',
+        'adresse_domicile',
+        'moyen',
+        'priorite',
+        'observations_cliniques'
     ];
 
     protected $casts = [
@@ -46,7 +57,11 @@ class Consultation extends Model
         'taille' => 'decimal:2',
         'imc' => 'decimal:2',
         'temperature' => 'decimal:1',
-        'frequence_cardiaque' => 'integer'
+        'frequence_cardiaque' => 'integer',
+        'frequence_respiratoire' => 'integer',
+        'spo2' => 'integer',
+        'hospitalise' => 'boolean',
+        'priorite' => 'string',
     ];
 
     // ==================== BOOT ====================
@@ -60,6 +75,13 @@ class Consultation extends Model
                 $consultation->numero_consultation = self::generateNumeroConsultation();
             }
             $consultation->calculerImc();
+            
+            if (empty($consultation->statut_consultation)) {
+                $consultation->statut_consultation = 'en_attente_infirmier';
+            }
+            if (empty($consultation->statut)) {
+                $consultation->statut = 'en_cours';
+            }
         });
         
         static::updating(function ($consultation) {
@@ -79,6 +101,11 @@ class Consultation extends Model
         return $this->belongsTo(User::class, 'medecin_id', 'id_user');
     }
 
+    public function infirmier()
+    {
+        return $this->belongsTo(User::class, 'id_infirmier', 'id_user');
+    }
+
     public function maladie()
     {
         return $this->belongsTo(Maladie::class, 'id_maladie', 'id_maladie');
@@ -87,6 +114,16 @@ class Consultation extends Model
     public function examens()
     {
         return $this->hasMany(Examen::class, 'consultation_id', 'id_consultation');
+    }
+
+    public function bilan()
+    {
+        return $this->hasOne(Bilan::class, 'consultation_id', 'id_consultation');
+    }
+
+    public function bonsAnalyse()
+    {
+        return $this->hasMany(BonAnalyse::class, 'id_consultation', 'id_consultation');
     }
 
     // ==================== ACCESSORS ====================
@@ -115,6 +152,47 @@ class Consultation extends Model
         return 'Date non définie';
     }
 
+    // ✅ ACCESSORS POUR LE STATUT DE CONSULTATION
+    public function getStatutConsultationLabelAttribute()
+    {
+        $labels = [
+            'en_attente_infirmier' => '⏳ En attente infirmier',
+            'bilan_fait' => '📋 Bilan fait',
+            'en_consultation' => '🩺 En consultation',
+            'termine' => '✅ Terminé',
+            'annule' => '❌ Annulé'
+        ];
+        
+        return $labels[$this->statut_consultation] ?? 'Inconnu';
+    }
+
+    public function getStatutConsultationBadgeAttribute()
+    {
+        $badges = [
+            'en_attente_infirmier' => '<span class="badge bg-warning text-dark">⏳ En attente infirmier</span>',
+            'bilan_fait' => '<span class="badge bg-info">📋 Bilan fait</span>',
+            'en_consultation' => '<span class="badge bg-primary">🩺 En consultation</span>',
+            'termine' => '<span class="badge bg-success">✅ Terminé</span>',
+            'annule' => '<span class="badge bg-danger">❌ Annulé</span>'
+        ];
+        
+        return $badges[$this->statut_consultation] ?? '<span class="badge bg-secondary">Inconnu</span>';
+    }
+
+    public function getStatutConsultationColorAttribute()
+    {
+        $colors = [
+            'en_attente_infirmier' => 'warning',
+            'bilan_fait' => 'info',
+            'en_consultation' => 'primary',
+            'termine' => 'success',
+            'annule' => 'danger'
+        ];
+        
+        return $colors[$this->statut_consultation] ?? 'secondary';
+    }
+
+    // ANCIEN STATUT (conservé pour compatibilité)
     public function getStatutLabelAttribute()
     {
         return match($this->statut) {
@@ -187,7 +265,7 @@ class Consultation extends Model
         $imc = $this->imc;
         if (!$imc) return 'Non disponible';
         
-        if ($imc < 16.5) return 'Famine';
+        if ($imc < 16.5) return 'Famine sévère';
         if ($imc < 18.5) return 'Maigreur';
         if ($imc < 25) return 'Normal';
         if ($imc < 30) return 'Surpoids';
@@ -224,6 +302,26 @@ class Consultation extends Model
         return $query->where('statut', 'annule');
     }
 
+    public function scopeEnAttenteInfirmier($query)
+    {
+        return $query->where('statut_consultation', 'en_attente_infirmier');
+    }
+
+    public function scopeBilanFait($query)
+    {
+        return $query->where('statut_consultation', 'bilan_fait');
+    }
+
+    public function scopeEnConsultation($query)
+    {
+        return $query->where('statut_consultation', 'en_consultation');
+    }
+
+    public function scopeTermineConsultation($query)
+    {
+        return $query->where('statut_consultation', 'termine');
+    }
+
     public function scopeParPeriode($query, $debut, $fin)
     {
         return $query->whereBetween('date_consultation', [$debut, $fin]);
@@ -250,9 +348,24 @@ class Consultation extends Model
         return $query->where('medecin_id', $medecinId);
     }
 
+    public function scopeParInfirmier($query, $infirmierId)
+    {
+        return $query->where('id_infirmier', $infirmierId);
+    }
+
     public function scopeParPatient($query, $patientId)
     {
         return $query->where('id_patient', $patientId);
+    }
+
+    public function scopeAvecBilan($query)
+    {
+        return $query->has('bilan');
+    }
+
+    public function scopeSansBilan($query)
+    {
+        return $query->doesntHave('bilan');
     }
 
     // ==================== MUTATORS ====================
@@ -295,6 +408,32 @@ class Consultation extends Model
         return $this;
     }
 
+    public function updateStatutConsultation($statut)
+    {
+        $this->update(['statut_consultation' => $statut]);
+        return $this;
+    }
+
+    public function transmettreAuMedecin()
+    {
+        return $this->updateStatutConsultation('bilan_fait');
+    }
+
+    public function commencerConsultation()
+    {
+        return $this->updateStatutConsultation('en_consultation');
+    }
+
+    public function terminerConsultation()
+    {
+        return $this->updateStatutConsultation('termine');
+    }
+
+    public function annulerConsultation()
+    {
+        return $this->updateStatutConsultation('annule');
+    }
+
     public function terminer()
     {
         return $this->updateStatut('termine');
@@ -320,6 +459,31 @@ class Consultation extends Model
         return $this->statut === 'annule';
     }
 
+    public function estEnAttenteInfirmier()
+    {
+        return $this->statut_consultation === 'en_attente_infirmier';
+    }
+
+    public function estBilanFait()
+    {
+        return $this->statut_consultation === 'bilan_fait';
+    }
+
+    public function estEnConsultation()
+    {
+        return $this->statut_consultation === 'en_consultation';
+    }
+
+    public function estTermineConsultation()
+    {
+        return $this->statut_consultation === 'termine';
+    }
+
+    public function aBilan()
+    {
+        return $this->bilan()->exists();
+    }
+
     // ==================== STATISTIQUES ====================
     
     public static function getStats($medecinId = null)
@@ -338,6 +502,27 @@ class Consultation extends Model
             'aujourdhui' => (clone $query)->aujourdhui()->count(),
             'cette_semaine' => (clone $query)->cetteSemaine()->count(),
             'ce_mois' => (clone $query)->ceMois()->count(),
+        ];
+    }
+
+    public static function getStatsInfirmier($infirmierId = null)
+    {
+        $query = self::query();
+        
+        if ($infirmierId) {
+            $query->where('id_infirmier', $infirmierId);
+        }
+        
+        return [
+            'total' => $query->count(),
+            'en_attente_infirmier' => (clone $query)->enAttenteInfirmier()->count(),
+            'bilan_fait' => (clone $query)->bilanFait()->count(),
+            'en_consultation' => (clone $query)->enConsultation()->count(),
+            'termine' => (clone $query)->termineConsultation()->count(),
+            'annule' => (clone $query)->annule()->count(),
+            'aujourdhui' => (clone $query)->aujourdhui()->count(),
+            'avec_bilan' => (clone $query)->avecBilan()->count(),
+            'sans_bilan' => (clone $query)->sansBilan()->count(),
         ];
     }
 
@@ -376,5 +561,20 @@ class Consultation extends Model
         }
         
         return 'CONS-' . $year . $month . '-' . $newNumber;
+    }
+
+    // ==================== RECHERCHE ====================
+    
+    public static function search($term)
+    {
+        return self::where('numero_consultation', 'LIKE', "%{$term}%")
+            ->orWhere('motif', 'LIKE', "%{$term}%")
+            ->orWhere('diagnostic', 'LIKE', "%{$term}%")
+            ->orWhereHas('patient', function($query) use ($term) {
+                $query->where('nom', 'LIKE', "%{$term}%")
+                    ->orWhere('prenom', 'LIKE', "%{$term}%")
+                    ->orWhere('postnom', 'LIKE', "%{$term}%")
+                    ->orWhere('numero_fiche', 'LIKE', "%{$term}%");
+            });
     }
 }

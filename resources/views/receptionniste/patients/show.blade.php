@@ -38,6 +38,25 @@
                         <p class="text-muted small">{{ $patient->numero_fiche }}</p>
                     </div>
                     
+                    <!-- Statut du patient -->
+                    <div class="alert alert-{{ $patient->statut == 'en_attente_infirmier' ? 'warning' : ($patient->statut == 'bilan_fait' ? 'info' : ($patient->statut == 'en_consultation' ? 'primary' : 'success')) }} mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-{{ $patient->statut == 'en_attente_infirmier' ? 'clock' : ($patient->statut == 'bilan_fait' ? 'check-circle' : ($patient->statut == 'en_consultation' ? 'stethoscope' : 'check-circle')) }} me-2"></i>
+                            <div>
+                                <strong>Statut :</strong> {!! $patient->statut_badge !!}
+                                @if($patient->statut == 'en_attente_infirmier')
+                                    <br><small class="text-muted">En attente de bilan infirmier</small>
+                                @elseif($patient->statut == 'bilan_fait')
+                                    <br><small class="text-muted">Bilan fait, en attente du médecin</small>
+                                @elseif($patient->statut == 'en_consultation')
+                                    <br><small class="text-muted">En consultation avec le médecin</small>
+                                @elseif($patient->statut == 'termine')
+                                    <br><small class="text-muted">Consultation terminée</small>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="row g-3">
                         <div class="col-6">
                             <label class="text-muted small d-block">Sexe</label>
@@ -45,7 +64,13 @@
                         </div>
                         <div class="col-6">
                             <label class="text-muted small d-block">Âge</label>
-                            <span>{{ $patient->age }} ans</span>
+                            <span>
+                                @if($patient->age)
+                                    <strong>{{ $patient->age }} ans</strong>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </span>
                         </div>
                         <div class="col-12">
                             <label class="text-muted small d-block">Date naissance</label>
@@ -63,18 +88,19 @@
                             <label class="text-muted small d-block">Adresse</label>
                             <span>{{ $patient->adresse }}</span>
                         </div>
-                        @if($patient->groupe_sanguin)
-                        <div class="col-12">
-                            <label class="text-muted small d-block">Groupe sanguin</label>
-                            <span><strong>{{ $patient->groupe_sanguin }}</strong></span>
-                        </div>
-                        @endif
                     </div>
 
                     @if($medecinTraitant)
                     <div class="mt-3 pt-3 border-top">
                         <label class="text-muted small d-block">Médecin traitant</label>
-                        <span class="badge badge-info">{{ $medecinTraitant->nom_complet }}</span>
+                        <span class="badge bg-info">{{ $medecinTraitant->nom_complet }}</span>
+                    </div>
+                    @endif
+
+                    @if(isset($consultation) && $consultation->infirmier)
+                    <div class="mt-2">
+                        <label class="text-muted small d-block">Infirmier assigné</label>
+                        <span class="badge bg-warning text-dark">{{ $consultation->infirmier->nom_complet }}</span>
                     </div>
                     @endif
                 </div>
@@ -129,7 +155,8 @@
         </div>
         <div class="card-body">
             <div class="tab-content" id="patientTabsContent">
-                <!-- Tab Consultations -->
+                
+                <!-- TAB CONSULTATIONS -->
                 <div class="tab-pane fade show active" id="consultations" role="tabpanel">
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -137,9 +164,9 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Médecin</th>
+                                    <th>Infirmier</th>
                                     <th>Motif</th>
                                     <th>Statut</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -147,17 +174,17 @@
                                 <tr>
                                     <td>{{ $consultation->date_consultation_formatee }}</td>
                                     <td>{{ $consultation->medecin->nom_complet ?? 'N/A' }}</td>
+                                    <td>{{ $consultation->infirmier->nom_complet ?? 'N/A' }}</td>
                                     <td>{{ \Illuminate\Support\Str::limit($consultation->motif ?? '', 50) }}</td>
-                                    <td>{!! $consultation->statut_badge !!}</td>
-                                    <td>
-                                        <a href="{{ route('receptionniste.examens.show', $consultation->id_consultation) }}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
+                                    <td>{!! $consultation->statut_consultation_badge !!}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="5" class="text-center py-4">Aucune consultation</td></tr>
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                                        Aucune consultation
+                                    </td>
+                                </tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -165,7 +192,7 @@
                     {{ $consultations->links() }}
                 </div>
 
-                <!-- Tab Examens -->
+                <!-- TAB EXAMENS -->
                 <div class="tab-pane fade" id="examens" role="tabpanel">
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -175,7 +202,6 @@
                                     <th>Type</th>
                                     <th>Statut</th>
                                     <th>Résultat</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -185,22 +211,22 @@
                                     <td>{{ $examen->type ?? 'N/A' }}</td>
                                     <td>
                                         @if($examen->statut == 'termine')
-                                            <span class="badge badge-success">Terminé</span>
+                                            <span class="badge bg-success">Terminé</span>
                                         @elseif($examen->statut == 'en_attente')
-                                            <span class="badge badge-warning">En attente</span>
+                                            <span class="badge bg-warning text-dark">En attente</span>
                                         @else
-                                            <span class="badge badge-secondary">{{ $examen->statut }}</span>
+                                            <span class="badge bg-secondary">{{ $examen->statut }}</span>
                                         @endif
                                     </td>
                                     <td>{{ \Illuminate\Support\Str::limit($examen->resultat ?? '', 30) }}</td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="5" class="text-center py-4">Aucun examen</td></tr>
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        <i class="fas fa-microscope fa-2x d-block mb-2"></i>
+                                        Aucun examen
+                                    </td>
+                                </tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -208,7 +234,7 @@
                     {{ $examens->links() }}
                 </div>
 
-                <!-- Tab Bons d'analyse -->
+                <!-- TAB BONS D'ANALYSE -->
                 <div class="tab-pane fade" id="bons" role="tabpanel">
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -219,7 +245,6 @@
                                     <th>Médecin</th>
                                     <th>Examen demandé</th>
                                     <th>Statut</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -231,56 +256,32 @@
                                     <td>{{ \Illuminate\Support\Str::limit($bon->examen_demande ?? '', 30) }}</td>
                                     <td>
                                         @if($bon->statut == 'termine')
-                                            <span class="badge badge-success">Terminé</span>
+                                            <span class="badge bg-success">Terminé</span>
                                         @elseif($bon->statut == 'en_attente')
-                                            <span class="badge badge-warning">En attente</span>
+                                            <span class="badge bg-warning text-dark">En attente</span>
                                         @elseif($bon->statut == 'preleve')
-                                            <span class="badge badge-info">Prélevé</span>
+                                            <span class="badge bg-info">Prélevé</span>
                                         @elseif($bon->statut == 'analyse')
-                                            <span class="badge badge-primary">En analyse</span>
+                                            <span class="badge bg-primary">En analyse</span>
                                         @else
-                                            <span class="badge badge-secondary">{{ $bon->statut }}</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <!-- ✅ Utiliser la route receptionniste.bons-analyse.show -->
-                                        @if(Route::has('receptionniste.bons-analyse.show'))
-                                        <a href="{{ route('receptionniste.bons-analyse.show', $bon->id_bon) }}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        @else
-                                        <a href="#" 
-                                           class="btn btn-sm btn-outline-primary"
-                                           onclick="alert('Route non configurée. Veuillez ajouter la route receptionniste.bons-analyse.show')">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        @endif
-                                        
-                                        @if($bon->statut == 'termine')
-                                            @if(Route::has('receptionniste.bons-analyse.print'))
-                                            <a href="{{ route('receptionniste.bons-analyse.print', $bon->id_bon) }}" 
-                                               class="btn btn-sm btn-outline-success" target="_blank">
-                                                <i class="fas fa-print"></i>
-                                            </a>
-                                            @else
-                                            <a href="#" 
-                                               class="btn btn-sm btn-outline-success"
-                                               onclick="alert('Route non configurée. Veuillez ajouter la route receptionniste.bons-analyse.print')">
-                                                <i class="fas fa-print"></i>
-                                            </a>
-                                            @endif
+                                            <span class="badge bg-secondary">{{ $bon->statut }}</span>
                                         @endif
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="6" class="text-center py-4">Aucun bon d'analyse</td></tr>
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="fas fa-file-prescription fa-2x d-block mb-2"></i>
+                                        Aucun bon d'analyse
+                                    </td>
+                                </tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
                     {{ $bonsAnalyse->links() }}
                 </div>
+
             </div>
         </div>
     </div>
@@ -294,6 +295,11 @@
         border-radius: 12px;
         padding: 15px;
         border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
     .stat-number {
         font-size: 28px;
@@ -308,18 +314,109 @@
         background-color: #e0f2fe;
         color: #0369a1;
     }
+    .badge-warning {
+        background-color: #fff3e0;
+        color: #f39c12;
+    }
+    .badge-success {
+        background-color: #e6f7ed;
+        color: #27ae60;
+    }
+    .badge-primary {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    .badge-secondary {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
     .nav-tabs .nav-link {
         color: #6c757d;
         border: none;
         padding: 10px 20px;
+        font-weight: 500;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.3s ease;
+    }
+    .nav-tabs .nav-link:hover {
+        color: #1a4d8c;
+        background: #f1f5f9;
     }
     .nav-tabs .nav-link.active {
         color: #1a4d8c;
         border-bottom: 3px solid #1a4d8c;
         background: transparent;
+        font-weight: 600;
     }
-    .nav-tabs .nav-link:hover {
+    .alert-warning {
+        background-color: #fff3e0;
+        border-left: 4px solid #f39c12;
+    }
+    .alert-info {
+        background-color: #e8f4fd;
+        border-left: 4px solid #3498db;
+    }
+    .alert-primary {
+        background-color: #e8f4fd;
+        border-left: 4px solid #1a4d8c;
+    }
+    .alert-success {
+        background-color: #e6f7ed;
+        border-left: 4px solid #27ae60;
+    }
+    .card {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    .card-header {
+        background: white !important;
+        border-bottom: 1px solid #e9ecef !important;
+    }
+    .table thead th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        font-weight: 600;
+        border-bottom: none;
+        background: #f8fafc;
+        padding: 10px 12px;
+    }
+    .table tbody td {
+        vertical-align: middle;
+        font-size: 13px;
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .table tbody tr:hover {
+        background: #f8fafc;
+    }
+    .table-responsive {
+        border-radius: 12px;
+    }
+    code {
+        background: #f1f3f5;
+        padding: 2px 10px;
+        border-radius: 6px;
+        font-size: 12px;
         color: #1a4d8c;
+    }
+    @media (max-width: 768px) {
+        .stat-number {
+            font-size: 20px;
+        }
+        .nav-tabs .nav-link {
+            font-size: 12px;
+            padding: 8px 12px;
+        }
+        .table tbody td {
+            font-size: 11px;
+            padding: 6px 8px;
+        }
+        .table thead th {
+            font-size: 9px;
+            padding: 6px 8px;
+        }
     }
 </style>
 @endpush

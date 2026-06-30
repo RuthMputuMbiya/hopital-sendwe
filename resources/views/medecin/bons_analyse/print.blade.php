@@ -125,6 +125,51 @@
             flex: 1;
         }
         
+        /* Bilan Infirmier */
+        .bilan-infirmier {
+            border: 1px solid #17a2b8;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #f0f9ff;
+        }
+        
+        .bilan-infirmier .block-title {
+            font-weight: 700;
+            font-size: 12px;
+            color: #0c5460;
+            border-bottom: 2px solid #17a2b8;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .bilan-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 5px;
+        }
+        
+        .bilan-item {
+            background: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+        
+        .bilan-item .label {
+            font-size: 9px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        
+        .bilan-item .value {
+            font-weight: 700;
+            font-size: 12px;
+            color: #1a4d8c;
+        }
+        
         /* Type échantillon */
         .echantillon-section {
             border: 1px solid #ddd;
@@ -328,6 +373,9 @@
             .examens-grid {
                 grid-template-columns: 1fr 1fr;
             }
+            .bilan-grid {
+                grid-template-columns: 1fr 1fr;
+            }
             .bon-container {
                 padding: 15px;
             }
@@ -339,13 +387,13 @@
     <!-- Boutons (non imprimables) -->
     <div class="no-print">
         <button onclick="window.print()" class="btn-print">
-            Imprimer le bon
+            <i class="fas fa-print me-2"></i> Imprimer le bon
         </button>
         <button onclick="window.close()" class="btn-close">
             ✖ Fermer
         </button>
         <button onclick="window.location.reload()" class="btn-print" style="background: #28a745;">
-            Recharger
+            <i class="fas fa-sync me-2"></i> Recharger
         </button>
     </div>
 
@@ -403,7 +451,7 @@
 
             <!-- Médecin demandeur -->
             <div class="info-block">
-                <div class="block-title">Médecin/Clinicién demandeur</div>
+                <div class="block-title">👨‍⚕️ Médecin/Clinicién demandeur</div>
                 <div class="info-row">
                     <span class="info-label">Nom et prénom :</span>
                     <span class="info-value"><strong>Dr. {{ $bon->prenom_medecin_demandeur }} {{ $bon->nom_medecin_demandeur }}</strong></span>
@@ -430,6 +478,108 @@
                 </div>
             </div>
         </div>
+
+        <!-- ⭐ BILAN INFIRMIER - AJOUTÉ ⭐ -->
+        @if(isset($bon->poids_infirmier) || isset($bon->taille_infirmier) || isset($bon->temperature_infirmier) || isset($bon->tension_arterielle_infirmier))
+        <div class="bilan-infirmier">
+            <div class="block-title">
+                <i class="fas fa-user-nurse me-2"></i> Bilan initial - Infirmier
+                @if($bon->infirmier)
+                <span style="font-weight: normal; font-size: 11px; color: #0c5460;">
+                    ({{ $bon->infirmier->nom_complet ?? 'N/A' }})
+                </span>
+                @endif
+            </div>
+            <div class="bilan-grid">
+                @if($bon->poids_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Poids</div>
+                    <div class="value">{{ $bon->poids_infirmier }} kg</div>
+                </div>
+                @endif
+                @if($bon->taille_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Taille</div>
+                    <div class="value">{{ $bon->taille_infirmier }} cm</div>
+                </div>
+                @endif
+                @if($bon->temperature_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Température</div>
+                    <div class="value">{{ $bon->temperature_infirmier }} °C</div>
+                </div>
+                @endif
+                @if($bon->tension_arterielle_infirmier)
+                <div class="bilan-item">
+                    <div class="label">Tension</div>
+                    <div class="value">{{ $bon->tension_arterielle_infirmier }}</div>
+                </div>
+                @endif
+                @if($bon->frequence_cardiaque_infirmier)
+                <div class="bilan-item">
+                    <div class="label">FC</div>
+                    <div class="value">{{ $bon->frequence_cardiaque_infirmier }} bpm</div>
+                </div>
+                @endif
+                @if($bon->frequence_respiratoire_infirmier)
+                <div class="bilan-item">
+                    <div class="label">FR</div>
+                    <div class="value">{{ $bon->frequence_respiratoire_infirmier }}/min</div>
+                </div>
+                @endif
+                @if($bon->imc_infirmier)
+                <div class="bilan-item">
+                    <div class="label">IMC</div>
+                    <div class="value">{{ $bon->imc_infirmier }}</div>
+                </div>
+                @endif
+                @if($bon->spo2_infirmier)
+                <div class="bilan-item">
+                    <div class="label">SpO2</div>
+                    <div class="value">{{ $bon->spo2_infirmier }}%</div>
+                </div>
+                @endif
+            </div>
+            @if($bon->motif_infirmier || $bon->symptomes_infirmier || $bon->observations_infirmier)
+            <div style="margin-top: 10px; border-top: 1px dashed #17a2b8; padding-top: 10px;">
+                @if($bon->motif_infirmier)
+                <div class="info-row">
+                    <span class="info-label" style="width: 80px;">Motif :</span>
+                    <span class="info-value">{{ $bon->motif_infirmier }}</span>
+                </div>
+                @endif
+                @if($bon->symptomes_infirmier)
+                <div class="info-row">
+                    <span class="info-label" style="width: 80px;">Symptômes :</span>
+                    <span class="info-value">{{ $bon->symptomes_infirmier }}</span>
+                </div>
+                @endif
+                @if($bon->observations_infirmier)
+                <div class="info-row">
+                    <span class="info-label" style="width: 80px;">Observations :</span>
+                    <span class="info-value">{{ $bon->observations_infirmier }}</span>
+                </div>
+                @endif
+            </div>
+            @endif
+            @if($bon->allergies_infirmier || $bon->traitements_infirmier)
+            <div style="margin-top: 5px;">
+                @if($bon->allergies_infirmier)
+                <div class="info-row" style="color: #dc3545;">
+                    <span class="info-label" style="width: 80px;">⚠️ Allergies :</span>
+                    <span class="info-value"><strong>{{ $bon->allergies_infirmier }}</strong></span>
+                </div>
+                @endif
+                @if($bon->traitements_infirmier)
+                <div class="info-row">
+                    <span class="info-label" style="width: 80px;">Traitements :</span>
+                    <span class="info-value">{{ $bon->traitements_infirmier }}</span>
+                </div>
+                @endif
+            </div>
+            @endif
+        </div>
+        @endif
 
         <!-- PRÉLEVEUR -->
         <div class="info-block" style="margin-bottom: 20px;">
@@ -514,7 +664,7 @@
 
         <!-- OBSERVATIONS CLINIQUES -->
         <div class="observations-section">
-            <div class="block-title">Informations cliniques</div>
+            <div class="block-title">📋 Informations cliniques</div>
             <div class="observations-content">
                 {{ $bon->observations_cliniques ?? 'Aucune observation clinique' }}
             </div>

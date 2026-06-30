@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\Consultation;
 use App\Models\Examen;
 use App\Models\Maladie;
+use App\Models\BonAnalyse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,24 +31,40 @@ class DashboardController extends Controller
                 return redirect()->route('receptionniste.dashboard');
             } elseif (Auth::user()->role_id == 4) {
                 return redirect()->route('laborantin.dashboard');
+            } elseif (Auth::user()->role_id == 5) {
+                return redirect()->route('infirmier.dashboard');
             }
             return redirect()->route('dashboard');
         }
 
-        // Statistiques globales
+        // ============================================================
+        // STATISTIQUES GLOBALES
+        // ============================================================
         $stats = [
+            // Personnel
             'total_medecins' => User::where('role_id', 2)->count(),
             'total_receptionnistes' => User::where('role_id', 3)->count(),
             'total_laborantins' => User::where('role_id', 4)->count(),
+            'total_infirmiers' => User::where('role_id', 5)->count(),
+            
+            // Patients et consultations
             'total_patients' => Patient::count(),
             'total_consultations' => Consultation::count(),
             'total_examens' => Examen::count(),
             'total_maladies' => Maladie::count(),
             'consultations_mois' => Consultation::whereMonth('date_consultation', now()->month)->count(),
             'taux_activite' => $this->calculerTauxActivite(),
+            
+            // ✅ STATS SANS BILANS
+            // 'total_bilans' => Bilan::count(),  // ❌ SUPPRIMÉ
+            'total_bons_analyse' => BonAnalyse::count(),
+            'patients_aujourdhui' => Patient::whereDate('created_at', today())->count(),
+            'consultations_aujourdhui' => Consultation::whereDate('date_consultation', today())->count(),
         ];
 
-        // Consultations par maladie (top 5)
+        // ============================================================
+        // MALADIES LES PLUS FRÉQUENTES (TOP 5)
+        // ============================================================
         $maladiesStats = DB::table('consultations')
             ->join('maladies', 'consultations.id_maladie', '=', 'maladies.id_maladie')
             ->select('maladies.nom_maladie', DB::raw('COUNT(*) as total'))
@@ -57,13 +74,17 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Dernières consultations
-        $recentConsultations = Consultation::with(['patient', 'medecin'])
+        // ============================================================
+        // DERNIÈRES CONSULTATIONS
+        // ============================================================
+        $recentConsultations = Consultation::with(['patient', 'medecin', 'infirmier'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
-        // Données pour le graphique (6 derniers mois)
+        // ============================================================
+        // GRAPHIQUE (6 DERNIERS MOIS)
+        // ============================================================
         $chartData = [];
         $chartLabels = [];
         
@@ -78,12 +99,23 @@ class DashboardController extends Controller
             $chartData[] = $total;
         }
 
+        // ============================================================
+        // STATISTIQUES PAR RÔLE
+        // ============================================================
+        $roleStats = [
+            'medecins_actifs' => User::where('role_id', 2)->where('est_actif', true)->count(),
+            'receptionnistes_actifs' => User::where('role_id', 3)->where('est_actif', true)->count(),
+            'laborantins_actifs' => User::where('role_id', 4)->where('est_actif', true)->count(),
+            'infirmiers_actifs' => User::where('role_id', 5)->where('est_actif', true)->count(),
+        ];
+
         return view('gestionnaire.dashboard', compact(
             'stats',
             'maladiesStats',
             'recentConsultations',
             'chartData',
-            'chartLabels'
+            'chartLabels',
+            'roleStats'
         ));
     }
 

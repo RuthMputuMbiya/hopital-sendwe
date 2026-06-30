@@ -9,7 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id('id_user');           // Clé primaire
+            // =============================================
+            // IDENTIFICATION
+            // =============================================
+            $table->id('id_user');
             $table->string('matricule', 50)->unique();
             $table->string('nom', 100);
             $table->string('postnom', 100);
@@ -20,16 +23,38 @@ return new class extends Migration
             $table->text('adresse');
             $table->string('password');
             
-            // Clé étrangère vers roles
+            // =============================================
+            // RÔLE
+            // =============================================
             $table->foreignId('role_id')
-                  ->constrained('roles', 'id_role')  // référence vers id_role dans table roles
+                  ->constrained('roles', 'id_role')
                   ->onDelete('cascade');
-                  
+            
+            // =============================================
+            // STATUT
+            // =============================================
             $table->boolean('est_actif')->default(true);
+            $table->boolean('first_login')->default(true); // ✅ AJOUTÉ
+            $table->timestamp('password_changed_at')->nullable(); // ✅ AJOUTÉ
+            
+            // =============================================
+            // INFORMATIONS PROFESSIONNELLES
+            // =============================================
             $table->date('date_embauche')->nullable();
             $table->string('specialite')->nullable();
+            
+            // =============================================
+            // TOKEN ET TIMESTAMPS
+            // =============================================
             $table->rememberToken();
             $table->timestamps();
+            
+            // =============================================
+            // INDEX
+            // =============================================
+            $table->index('email');
+            $table->index('matricule');
+            $table->index('role_id');
         });
     }
 

@@ -24,8 +24,12 @@ class DashboardController extends Controller
             return redirect()->route('receptionniste.dashboard');
         } elseif ($user->role_id == 4) {
             return redirect()->route('laborantin.dashboard');
+        } elseif ($user->role_id == 5) {
+            return redirect()->route('infirmier.dashboard');
         }
         
-        return redirect()->route('login');
+        // Si le rôle n'est pas reconnu
+        Auth::logout();
+        return redirect()->route('login')->with('error', 'Rôle non reconnu.');
     }
 }

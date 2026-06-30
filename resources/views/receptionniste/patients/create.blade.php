@@ -284,19 +284,10 @@
     </div>
 </div>
 
-@push('styles')
-<style>
-    .tracking-wider { letter-spacing: 1px; }
-    .form-control, .form-select { border-radius: 12px; padding: 10px 15px; }
-    .input-group-text { border-radius: 12px 0 0 12px; }
-    .form-control:focus, .form-select:focus { border-color: #1a4d6b; box-shadow: 0 0 0 3px rgba(26, 77, 107, 0.1); }
-    .alert-custom { border-left: 4px solid #1a4d6b; }
-</style>
-@endpush
-
 @push('scripts')
 <script>
     $(document).ready(function() {
+        // Initialisation Select2
         $('.select2-doctor').select2({
             theme: 'bootstrap5',
             width: '100%',
@@ -304,6 +295,7 @@
             allowClear: true
         });
         
+        // Gestion de l'affichage du médecin sélectionné
         const medecinSelect = $('#medecin_select');
         const medecinInfoCard = $('#medecinInfoCard');
         const medecinInfo = $('#medecinInfo');
@@ -323,16 +315,128 @@
                         </small>
                     </div>
                 `);
-                medecinInfoCard.show();
+                medecinInfoCard.show(300);
             } else {
-                medecinInfoCard.hide();
+                medecinInfoCard.hide(300);
             }
         });
         
+        // Déclencher l'événement si un médecin est pré-sélectionné
         if (medecinSelect.val() && medecinSelect.val() !== '') {
             medecinSelect.trigger('change');
         }
+        
+        // Ajouter un effet de confirmation avant soumission
+        $('#patientForm').on('submit', function(e) {
+            const nom = $('input[name="nom"]').val();
+            const prenom = $('input[name="prenom"]').val();
+            
+            if (nom && prenom) {
+                return confirm(`Confirmer l'enregistrement du patient ${prenom} ${nom} ?`);
+            }
+            return true;
+        });
     });
 </script>
+@endpush
+
+@push('styles')
+<style>
+    .form-control:focus, .form-select:focus {
+        border-color: #2c6e9e;
+        box-shadow: 0 0 0 3px rgba(44, 110, 158, 0.1);
+    }
+    .card {
+        border-radius: 16px !important;
+        overflow: hidden;
+    }
+    .card-header {
+        border-bottom: 1px solid #e9ecef !important;
+    }
+    .input-group-text {
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-right: none;
+    }
+    .input-group .form-control {
+        border-left: none;
+    }
+    .input-group .form-control:focus {
+        border-color: #2c6e9e;
+    }
+    .btn {
+        border-radius: 50px !important;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #1a4d8c, #2c6e9e);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0f2b3d, #1a4d8c);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(26, 77, 140, 0.3);
+    }
+    .btn-outline-secondary:hover {
+        background: #f1f3f5;
+    }
+    .btn-outline-warning:hover {
+        background: #fff3e0;
+    }
+    .alert-custom {
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        border-left: 4px solid #0284c7;
+    }
+    .form-label {
+        font-weight: 600;
+        font-size: 13px;
+        color: #1e293b;
+    }
+    .form-control, .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    .select2-container--bootstrap5 .select2-selection {
+        min-height: 46px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        padding: 5px 10px;
+    }
+    .select2-container--bootstrap5 .select2-selection--single .select2-selection__rendered {
+        line-height: 34px !important;
+        font-size: 14px;
+    }
+    .select2-container--bootstrap5 .select2-selection--single .select2-selection__arrow {
+        height: 44px !important;
+    }
+    .select2-container--bootstrap5 .select2-dropdown {
+        border-radius: 10px !important;
+        border: 1.5px solid #e2e8f0 !important;
+    }
+    .select2-container--bootstrap5 .select2-results__option {
+        padding: 8px 14px;
+        font-size: 14px;
+    }
+    .select2-container--bootstrap5 .select2-results__option--highlighted {
+        background: linear-gradient(135deg, #1a4d8c, #2c6e9e) !important;
+    }
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 20px !important;
+        }
+        .form-control, .form-select {
+            font-size: 13px;
+            padding: 8px 12px;
+        }
+        .btn {
+            font-size: 13px;
+            padding: 8px 16px;
+        }
+    }
+</style>
 @endpush
 @endsection

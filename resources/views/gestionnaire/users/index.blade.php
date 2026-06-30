@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
+    <!-- En-tête -->
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
         <div data-aos="fade-right">
             <h1 class="h2 mb-1">
@@ -11,7 +12,7 @@
                 Gestion des utilisateurs
             </h1>
             <p class="text-muted mb-0">
-                <i class="fas fa-user-cog me-1"></i> Gérez les comptes des médecins, réceptionnistes et laborantins
+                <i class="fas fa-user-cog me-1"></i> Gérez les comptes des médecins, réceptionnistes, laborantins et infirmiers
             </p>
         </div>
         <div data-aos="fade-left">
@@ -21,6 +22,7 @@
         </div>
     </div>
 
+    <!-- Cartes statistiques -->
     <div class="row g-4 mb-4">
         <div class="col-md-3" data-aos="fade-up" data-aos-delay="100">
             <div class="stat-card">
@@ -53,6 +55,25 @@
         </div>
     </div>
 
+    <!-- Deuxième ligne de statistiques -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-user-nurse"></i></div>
+                <div class="stat-number">{{ number_format($stats['receptionnistes']) }}</div>
+                <div class="stat-label">Réceptionnistes</div>
+            </div>
+        </div>
+        <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-user-nurse" style="color: #f59e0b;"></i></div>
+                <div class="stat-number">{{ number_format($stats['infirmiers'] ?? 0) }}</div>
+                <div class="stat-label">Infirmiers</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
     <div class="card mb-4" data-aos="fade-up">
         <div class="card-body">
             <form method="GET" action="{{ route('gestionnaire.users.index') }}" class="row g-3">
@@ -85,6 +106,7 @@
         </div>
     </div>
 
+    <!-- Tableau -->
     <div class="card" data-aos="fade-up">
         <div class="card-header">
             <i class="fas fa-list me-2"></i> Liste des utilisateurs
@@ -117,7 +139,11 @@
                             <td>{{ $user->telephone }}</td>
                             <td>
                                 @if($user->role)
-                                    <span class="badge badge-primary">{{ $user->role->nom_role }}</span>
+                                    @if($user->role->id_role == 5)
+                                        <span class="badge badge-warning">🩺 {{ $user->role->nom_role }}</span>
+                                    @else
+                                        <span class="badge badge-primary">{{ $user->role->nom_role }}</span>
+                                    @endif
                                 @endif
                             </td>
                             <td>

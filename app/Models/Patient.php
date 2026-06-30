@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Carbon\Carbon;
 
 class Patient extends Authenticatable
 {
@@ -30,7 +31,6 @@ class Patient extends Authenticatable
         'adresse',
         'ville',
         'quartier',
-        // 'groupe_sanguin',  // ❌ SUPPRIMÉ
         'antecedents_medicaux',
         'antecedents_chirurgicaux',
         'antecedents_familiaux',
@@ -66,17 +66,64 @@ class Patient extends Authenticatable
 
     public function getNomCompletAttribute()
     {
+        return $this->prenom . ' ' . $this->nom . ' ' . $this->postnom;
+    }
+
+    public function getNomCompletCourtAttribute()
+    {
         return $this->prenom . ' ' . $this->nom;
     }
 
-    public function getNomCompletCompletAttribute()
-    {
-        return $this->prenom . ' ' . $this->postnom . ' ' . $this->nom;
-    }
-
+    /**
+     * ✅ CALCUL DE L'ÂGE - CORRIGÉ
+     * Retourne l'âge en années ou null si pas de date de naissance
+     */
     public function getAgeAttribute()
     {
-        return $this->date_naissance ? $this->date_naissance->age : null;
+        if ($this->date_naissance) {
+            return Carbon::parse($this->date_naissance)->age;
+        }
+        return null;
+    }
+
+    // ✅ STATUT DU PATIENT
+    public function getStatutAttribute()
+    {
+        $derniereConsultation = $this->consultations()->latest()->first();
+        
+        if (!$derniereConsultation) {
+            return 'nouveau';
+        }
+        
+        return $derniereConsultation->statut_consultation ?? 'en_attente_infirmier';
+    }
+
+    public function getStatutLabelAttribute()
+    {
+        $statuts = [
+            'nouveau' => '🆕 Nouveau patient',
+            'en_attente_infirmier' => '⏳ En attente infirmier',
+            'bilan_fait' => '📋 Bilan fait',
+            'en_consultation' => '🩺 En consultation',
+            'termine' => '✅ Terminé',
+            'annule' => '❌ Annulé'
+        ];
+        
+        return $statuts[$this->statut] ?? 'Inconnu';
+    }
+
+    public function getStatutBadgeAttribute()
+    {
+        $badges = [
+            'nouveau' => '<span class="badge bg-primary">🆕 Nouveau</span>',
+            'en_attente_infirmier' => '<span class="badge bg-warning text-dark">⏳ En attente infirmier</span>',
+            'bilan_fait' => '<span class="badge bg-info">📋 Bilan fait</span>',
+            'en_consultation' => '<span class="badge bg-primary">🩺 En consultation</span>',
+            'termine' => '<span class="badge bg-success">✅ Terminé</span>',
+            'annule' => '<span class="badge bg-danger">❌ Annulé</span>'
+        ];
+        
+        return $badges[$this->statut] ?? '<span class="badge bg-secondary">Inconnu</span>';
     }
 
     // ============================================================
@@ -105,7 +152,6 @@ class Patient extends Authenticatable
         return $this->hasMany(Consultation::class, 'id_patient', 'id_patient');
     }
 
-    // ✅ RELATION AVEC LES BONS D'ANALYSE
     public function bonsAnalyse()
     {
         return $this->hasMany(BonAnalyse::class, 'id_patient', 'id_patient');
@@ -116,7 +162,6 @@ class Patient extends Authenticatable
         return $this->hasMany(FichierPatient::class, 'id_patient', 'id_patient');
     }
 
-    // ✅ RELATION AVEC LES EXAMENS
     public function examens()
     {
         return $this->hasMany(Examen::class, 'id_patient', 'id_patient');
@@ -155,6 +200,27 @@ class Patient extends Authenticatable
         });
     }
 
+    public function scopeEnAttenteInfirmier($query)
+    {
+        return $query->whereHas('consultations', function($q) {
+            $q->where('statut_consultation', 'en_attente_infirmier');
+        });
+    }
+
+    public function scopeBilanFait($query)
+    {
+        return $query->whereHas('consultations', function($q) {
+            $q->where('statut_consultation', 'bilan_fait');
+        });
+    }
+
+    public function scopeEnConsultation($query)
+    {
+        return $query->whereHas('consultations', function($q) {
+            $q->where('statut_consultation', 'en_consultation');
+        });
+    }
+
     // ============================================================
     // STATISTIQUES
     // ============================================================
@@ -173,6 +239,15 @@ class Patient extends Authenticatable
             'consultes' => $consultes,
             'non_consultes' => $nonConsultes,
             'mois_actuel' => $moisActuel,
+        ];
+    }
+
+    public static function getStatsForInfirmier()
+    {
+        return [
+            'en_attente' => self::enAttenteInfirmier()->count(),
+            'bilan_fait' => self::bilanFait()->count(),
+            'en_consultation' => self::enConsultation()->count(),
         ];
     }
 }

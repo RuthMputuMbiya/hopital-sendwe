@@ -28,14 +28,11 @@ class RapportController extends Controller
             'examens_mois' => Examen::whereMonth('date_examen', now()->month)->count(),
         ];
         
+        // ✅ CORRIGÉ : Suppression de 'created_by' qui n'existe pas
         $monActivite = [
-            'patients_enregistres' => Patient::where('created_by', Auth::id())->count(),
-            'patients_semaine' => Patient::where('created_by', Auth::id())
-                ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-                ->count(),
-            'patients_mois' => Patient::where('created_by', Auth::id())
-                ->whereMonth('created_at', now()->month)
-                ->count(),
+            'patients_enregistres' => Patient::count(), // Total des patients
+            'patients_semaine' => Patient::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'patients_mois' => Patient::whereMonth('created_at', now()->month)->count(),
         ];
         
         $chartLabels = [];
@@ -64,7 +61,8 @@ class RapportController extends Controller
         $dateDebut = $request->get('date_debut');
         $dateFin = $request->get('date_fin');
         
-        $query = Patient::where('created_by', Auth::id());
+        // ✅ CORRIGÉ : Suppression de 'created_by'
+        $query = Patient::query();
         
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -84,11 +82,12 @@ class RapportController extends Controller
         
         $historiques = $query->orderBy('created_at', 'desc')->paginate(20);
         
+        // ✅ CORRIGÉ : Suppression de 'created_by'
         $stats = [
-            'total' => Patient::where('created_by', Auth::id())->count(),
-            'aujourdhui' => Patient::where('created_by', Auth::id())->whereDate('created_at', today())->count(),
-            'semaine' => Patient::where('created_by', Auth::id())->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'mois' => Patient::where('created_by', Auth::id())->whereMonth('created_at', now()->month)->count(),
+            'total' => Patient::count(),
+            'aujourdhui' => Patient::whereDate('created_at', today())->count(),
+            'semaine' => Patient::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'mois' => Patient::whereMonth('created_at', now()->month)->count(),
         ];
         
         return view('receptionniste.rapports.historique', compact('historiques', 'stats', 'search', 'dateDebut', 'dateFin'));
@@ -194,9 +193,8 @@ class RapportController extends Controller
                 ->get();
         }
         
-        $rapport['mon_activite'] = Patient::where('created_by', Auth::id())
-            ->whereBetween('created_at', [$debut, $fin])
-            ->count();
+        // ✅ CORRIGÉ : Suppression de 'created_by'
+        $rapport['mon_activite'] = Patient::whereBetween('created_at', [$debut, $fin])->count();
         
         return view('receptionniste.rapports.apercu', compact('rapport'));
     }
@@ -276,9 +274,8 @@ class RapportController extends Controller
             $rapport['total_examens'] = Examen::whereBetween('date_examen', [$debut, $fin])->count();
         }
         
-        $rapport['mon_activite'] = Patient::where('created_by', Auth::id())
-            ->whereBetween('created_at', [$debut, $fin])
-            ->count();
+        // ✅ CORRIGÉ : Suppression de 'created_by'
+        $rapport['mon_activite'] = Patient::whereBetween('created_at', [$debut, $fin])->count();
         
         // Retourner la vue pour impression
         return view('receptionniste.rapports.export-pdf', compact('rapport'));
